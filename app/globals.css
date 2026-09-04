@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+/* Dark only. One palette, no toggles. */
+:root {
+  color-scheme: dark;
+  --bg: #0a0a0a;
+  --surface: #161616;
+  --border: #2a2a2a;
+  --fg: #ededed;
+  --muted: #8a8a8a;
+  --accent: #f5c542; /* gold */
+  --good: #3ddc84;
+  --bad: #ff5c5c;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-good: var(--good);
+  --color-bad: var(--bad);
+  /* System fonts: SF on iPhone, no network fetch at build time. */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+html,
+body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior-y: none;
+}
+
+/* iPhone safe areas when installed to the home screen */
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
