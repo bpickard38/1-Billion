@@ -75,7 +75,7 @@ export default function WeeklyReviewGate({
     >
       <h1 className="text-xl font-bold">Weekly Review Required</h1>
       <p className="text-sm text-muted">
-        It&apos;s Friday evening — close out this week before starting the next one.
+        This week isn&apos;t closed yet — finish the weekly review before starting new work.
       </p>
       <button
         type="button"
