@@ -9,6 +9,9 @@ export default function MorePage() {
     <>
       <PageTitle>More</PageTitle>
       <nav className="mb-6 flex flex-col gap-2">
+        <Link href="/more/skills" className="rounded-lg border border-border px-3 py-2 text-sm">
+          Skills
+        </Link>
         <Link href="/more/schedule" className="rounded-lg border border-border px-3 py-2 text-sm">
           Schedule templates
         </Link>
@@ -16,7 +19,7 @@ export default function MorePage() {
           Problem database
         </Link>
       </nav>
-      <p className="text-muted mb-2">Skills and Ideas arrive in later phases.</p>
+      <p className="text-muted mb-2">Ideas arrive in a later phase.</p>
 
       <p className="mb-2 mt-6 text-xs uppercase tracking-wide text-muted">Settings</p>
       <div className="mb-8 flex flex-col gap-2">
