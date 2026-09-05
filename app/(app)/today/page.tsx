@@ -9,34 +9,10 @@ import DailyReviewSheet from "@/components/today/DailyReviewSheet";
 import { createClient } from "@/lib/supabase/server";
 import { getLocalDateString, getLocalWeekday, DEFAULT_TIMEZONE } from "@/lib/dates";
 import { computeHabitStreak } from "@/lib/streaks";
+import { getGoalChain, computeProgressPct } from "@/lib/goals";
 import { materializeTodaySchedule } from "./actions";
 
-type Supabase = Awaited<ReturnType<typeof createClient>>;
-
-type ChainLink = { id: string; title: string; level: string };
-
 const STREAK_LOOKBACK_DAYS = 370;
-
-// Goal levels are shallow (Dream..Today, 8 max) so a naive parent_id walk is
-// plenty fast here. Phase 4 promotes this to a shared GoalChain component,
-// possibly backed by a recursive CTE.
-async function getGoalChain(supabase: Supabase, goalId: string | null): Promise<ChainLink[]> {
-  const chain: ChainLink[] = [];
-  let currentId = goalId;
-  let hops = 0;
-  while (currentId && hops < 10) {
-    const { data } = await supabase
-      .from("goals")
-      .select("id, title, level, parent_id")
-      .eq("id", currentId)
-      .maybeSingle();
-    if (!data) break;
-    chain.push({ id: data.id, title: data.title, level: data.level });
-    currentId = data.parent_id;
-    hops++;
-  }
-  return chain;
-}
 
 export default async function TodayPage() {
   const supabase = await createClient();
@@ -108,7 +84,7 @@ export default async function TodayPage() {
         .eq("parent_id", quarterGoal.id)
         .eq("status", "done"),
     ]);
-    quarterProgressPct = total ? Math.round(((done ?? 0) / total) * 100) : 0;
+    quarterProgressPct = computeProgressPct(done ?? 0, total ?? 0);
   }
 
   const chain = await getGoalChain(supabase, dailyEntry?.priority_goal_id ?? null);
