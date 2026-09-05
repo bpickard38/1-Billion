@@ -1,4 +1,4 @@
-import { startOfWeek, endOfWeek, format } from "date-fns";
+import { startOfWeek, endOfWeek, getISODay, format } from "date-fns";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
 
 export const DEFAULT_TIMEZONE = "America/Denver";
@@ -42,4 +42,12 @@ export function getWeekStartDateString(
   timeZone: string = DEFAULT_TIMEZONE
 ): string {
   return getLocalDateString(getWeekStart(instant, timeZone), timeZone);
+}
+
+/** ISO weekday of `instant` in `timeZone`: 1 = Monday ... 7 = Sunday. Matches `habits.days_of_week` and `schedule_templates.weekday`. */
+export function getLocalWeekday(
+  instant: Date,
+  timeZone: string = DEFAULT_TIMEZONE
+): number {
+  return getISODay(toZonedTime(instant, timeZone));
 }

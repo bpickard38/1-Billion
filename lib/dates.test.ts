@@ -5,6 +5,7 @@ import {
   getWeekStart,
   getWeekEnd,
   getWeekStartDateString,
+  getLocalWeekday,
 } from "./dates.ts";
 
 const DENVER = "America/Denver";
@@ -55,4 +56,10 @@ test("week boundaries survive the fall-back DST change (2026-11-01)", () => {
   // Start of week is on daylight time (MDT, UTC-6); end of week is back on
   // standard time (MST, UTC-7) because the change lands inside the week.
   assert.equal(getWeekStart(midweek, DENVER).toISOString(), "2026-10-26T06:00:00.000Z");
+});
+
+test("getLocalWeekday: 1 = Monday ... 7 = Sunday (2026-09-04 is a Friday)", () => {
+  assert.equal(getLocalWeekday(new Date("2026-08-31T20:00:00Z"), DENVER), 1);
+  assert.equal(getLocalWeekday(new Date("2026-09-04T20:00:00Z"), DENVER), 5);
+  assert.equal(getLocalWeekday(new Date("2026-09-06T20:00:00Z"), DENVER), 7);
 });
