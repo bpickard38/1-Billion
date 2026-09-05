@@ -10,6 +10,7 @@ import {
   instantToLocalTimeString,
   localMinutesSinceMidnight,
   isAfterWeeklyReviewCutoff,
+  getMonthStartDateString,
 } from "./dates.ts";
 
 const DENVER = "America/Denver";
@@ -97,6 +98,19 @@ test("isAfterWeeklyReviewCutoff: false before Friday 5 PM local, true at and aft
   assert.equal(isAfterWeeklyReviewCutoff(new Date("2026-09-04T22:59:00Z"), DENVER), false); // 4:59 PM Denver
   assert.equal(isAfterWeeklyReviewCutoff(new Date("2026-09-04T23:00:00Z"), DENVER), true); // 5:00 PM Denver
   assert.equal(isAfterWeeklyReviewCutoff(new Date("2026-09-04T23:59:00Z"), DENVER), true); // 5:59 PM Denver
+});
+
+test("getMonthStartDateString resolves to the 1st of the local month, not UTC's", () => {
+  // 2026-10-01T05:00:00Z is still 2026-09-30 23:00 in Denver (MDT, UTC-6) — previous month.
+  assert.equal(getMonthStartDateString(new Date("2026-10-01T05:00:00Z"), DENVER), "2026-09-01");
+  // 2026-10-01T07:00:00Z has crossed into 2026-10-01 01:00 in Denver.
+  assert.equal(getMonthStartDateString(new Date("2026-10-01T07:00:00Z"), DENVER), "2026-10-01");
+});
+
+test("getMonthStartDateString crosses a year boundary and works in a non-Denver zone", () => {
+  assert.equal(getMonthStartDateString(new Date("2027-01-01T12:00:00Z"), DENVER), "2027-01-01");
+  // 2026-08-31T15:30:00Z is 2026-09-01 00:30 in Tokyo (UTC+9) — already the next month there.
+  assert.equal(getMonthStartDateString(new Date("2026-08-31T15:30:00Z"), "Asia/Tokyo"), "2026-09-01");
 });
 
 test("isAfterWeeklyReviewCutoff: true all through Saturday and Sunday, false Monday-Thursday", () => {

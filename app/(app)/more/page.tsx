@@ -18,8 +18,10 @@ export default function MorePage() {
         <Link href="/crm/problems" className="rounded-lg border border-border px-3 py-2 text-sm">
           Problem database
         </Link>
+        <Link href="/more/ideas" className="rounded-lg border border-border px-3 py-2 text-sm">
+          Ideas
+        </Link>
       </nav>
-      <p className="text-muted mb-2">Ideas arrive in a later phase.</p>
 
       <p className="mb-2 mt-6 text-xs uppercase tracking-wide text-muted">Settings</p>
       <div className="mb-8 flex flex-col gap-2">

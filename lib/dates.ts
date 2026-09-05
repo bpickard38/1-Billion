@@ -1,4 +1,4 @@
-import { startOfWeek, endOfWeek, getISODay, format } from "date-fns";
+import { startOfWeek, endOfWeek, startOfMonth, getISODay, format } from "date-fns";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
 
 export const DEFAULT_TIMEZONE = "America/Denver";
@@ -87,6 +87,15 @@ export function localMinutesSinceMidnight(
 ): number {
   const zoned = toZonedTime(new Date(instant), timeZone);
   return zoned.getHours() * 60 + zoned.getMinutes();
+}
+
+/** The 1st of the local calendar month containing `instant`, as "yyyy-MM-dd" — the idea-review boundary. */
+export function getMonthStartDateString(
+  instant: Date,
+  timeZone: string = DEFAULT_TIMEZONE
+): string {
+  const zonedMonthStart = startOfMonth(toZonedTime(instant, timeZone));
+  return format(zonedMonthStart, "yyyy-MM-dd");
 }
 
 /** True from Friday 5:00 PM local through the end of Sunday — the weekly review gate's window. */

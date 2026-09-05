@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import TabBar from "@/components/TabBar";
 import WeeklyReviewGate from "@/components/week/WeeklyReviewGate";
+import AddIdeaButton from "@/components/ideas/AddIdeaButton";
 import { DEFAULT_TIMEZONE } from "@/lib/dates";
 import { getCurrentWeekScore } from "@/app/(app)/week/actions";
 
@@ -22,6 +23,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <div className="flex-1 flex flex-col min-h-full">
       <main className="flex-1 px-4 pt-safe pb-24">{children}</main>
+      <AddIdeaButton />
       <TabBar />
       <WeeklyReviewGate
         weekStart={weekScore.weekStart}
