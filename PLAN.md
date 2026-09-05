@@ -19,10 +19,10 @@ This file lives at the root of the repo as `PLAN.md`. Claude reads it at the sta
 | Score weighting | 70% outputs / 20% inputs / 10% habits (editable in Settings) |
 | Seed data | Seeded from the "1 Billion dollars" doc on first run |
 | Build location | Local folder on Brayden's PC, pushed to GitHub, auto-deployed by Vercel |
-| Users | One. Sign-ups disabled after your account exists. |
+| Users | Multiple. Public self-serve sign-up (`/signup`, Supabase Auth email+password). Each user's data is isolated by RLS (`user_id = auth.uid()`) — there is no shared/org data model, just N independent accounts. Decided 2026-09-04, reversing the original "one user" decision. |
 | Native app | No. PWA only. |
 
-Not building: microservices, custom auth, agents, native apps, real-time collaboration, multi-tenant anything.
+Not building: microservices, custom auth (still Supabase Auth), agents, native apps, real-time collaboration, org/team/shared-workspace features.
 
 ---
 
@@ -188,7 +188,7 @@ Each phase = one Claude session (some may take two). Each has: Goal · Steps · 
 1. Create GitHub repo `one-billion` (private). Clone it into a folder on your PC and connect that folder to Claude.
 2. Supabase → New project (region: US West). Copy Project URL, anon key, service-role key.
 3. Vercel → import the GitHub repo. Add env vars: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`.
-4. Supabase → Authentication → Providers → Email: enable; disable "Confirm email" for now. Create your user in Authentication → Users. Then Authentication → Settings → turn off sign-ups.
+4. Supabase → Authentication → Providers → Email: enable. Authentication → Settings → confirm "Allow new users to sign up" is **on** (public self-serve sign-up, added 2026-09-04). `[DECIDE]` "Confirm email" is off for now — flip it on once real strangers can hit `/signup`, so an unowned inbox can't be used to create an account.
 
 **Claude:**
 1. `create-next-app` with TypeScript, Tailwind, App Router, `src/` off, ESLint.
@@ -341,12 +341,15 @@ This is the most fragile phase. Standalone schedule (Phase 3) must be in daily u
 4. Quarter progress default: auto from child goals, or manual %?
 5. Service worker: hand-written `sw.js` (recommended) or Serwist?
 6. Monthly idea review: gate on Today until done, or just a badge?
+7. "Confirm email" on sign-up: off (matches Phase 0's original single-user setup) or on (recommended once `/signup` is public, so a bad email address can't hold an account)?
 
 ---
 
 ## 8. What to understand (filled in by Claude after each phase)
 
 **Phase 0 —** A request for `/today` hits Vercel, which runs `proxy.ts` first. The proxy asks Supabase "who owns this cookie?" using the *anon* key; with no valid session it redirects to `/login` before any page code runs. On the login form, the browser posts to a Server Action (`app/login/actions.ts`) which calls `signInWithPassword` on the server and sets a session cookie. Every later page renders on the server with `createClient()` from `lib/supabase/server.ts`, which reads that cookie. The anon key can only do what Row Level Security allows for the logged-in user; the service-role key bypasses RLS entirely, so it never leaves the server (and isn't used until Phase 9). `manifest.json` + the `apple-mobile-web-app-*` meta tags are what make Safari's "Add to Home Screen" launch the app full-screen; `sw.js` is registered now so the browser already trusts it when push arrives in Phase 9.
+
+**Multi-user (2026-09-04) —** `/signup` calls `supabase.auth.signUp()` from a Server Action, same pattern as `/login`'s `signInWithPassword()` — the browser never talks to Supabase directly, only through server-rendered forms. This did *not* touch the security model: the anon key is still public by design (it can't do anything on its own), and the service-role key is still untouched until Phase 9. What actually keeps User A from seeing User B's data is Row Level Security, landing in Phase 1 — every table's `user_id = auth.uid()` policy means a query only ever returns rows owned by whoever is logged in, regardless of which key made the request. `proxy.ts` now treats `/signup` like `/login`: reachable when logged out, redirects to `/today` when logged in. One open item: Supabase's "Confirm email" setting is still off from Phase 0's single-user setup — turn it on (Authentication → Settings) before this is truly public, or a stranger can register with an email they don't own.
 
 Phase 1 — …
 
@@ -358,3 +361,4 @@ Phase 1 — …
 |---|---|---|
 | 2026-09-04 | Initial plan | Claude + Brayden |
 | 2026-09-04 | Phase 0 built. Dropped Google Fonts (network fetch at build time; system fonts render as SF on iPhone). `typecheck` script runs `next typegen` first so `PageProps`/`LayoutProps` globals exist. | Claude |
+| 2026-09-04 | Reversed the "one user" decision: public self-serve `/signup` added, Supabase sign-ups re-enabled. Data isolation is unchanged — still RLS (`user_id = auth.uid()`) on every table, anon key stays public, service-role key still untouched until Phase 9. See §0. | Claude + Brayden |
