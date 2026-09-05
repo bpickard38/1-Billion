@@ -51,3 +51,31 @@ export function getLocalWeekday(
 ): number {
   return getISODay(toZonedTime(instant, timeZone));
 }
+
+/**
+ * UTC instant for local wall-clock `dateString` ("yyyy-MM-dd") + `timeString`
+ * ("HH:mm" or "HH:mm:ss", as Postgres `time` columns come back) in `timeZone`.
+ * `fromZonedTime` reads its `Date` argument's *host-local* getters as the
+ * wall clock to reinterpret — never `Date.UTC` (whose getters would be UTC,
+ * silently wrong unless the host itself runs in UTC) — so the components
+ * must be built with the local constructor, same as `toZonedTime`'s output
+ * that `getWeekStart` feeds back into `fromZonedTime`.
+ */
+export function localTimeToInstant(
+  dateString: string,
+  timeString: string,
+  timeZone: string = DEFAULT_TIMEZONE
+): Date {
+  const [year, month, day] = dateString.split("-").map(Number);
+  const [hour, minute, second] = timeString.split(":").map(Number);
+  const wallClock = new Date(year, month - 1, day, hour, minute, second || 0);
+  return fromZonedTime(wallClock, timeZone);
+}
+
+/** The local "HH:mm" wall-clock time of `instant` in `timeZone`. */
+export function instantToLocalTimeString(
+  instant: Date | string,
+  timeZone: string = DEFAULT_TIMEZONE
+): string {
+  return format(toZonedTime(new Date(instant), timeZone), "HH:mm");
+}

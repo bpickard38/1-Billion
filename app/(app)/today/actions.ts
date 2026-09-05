@@ -3,7 +3,14 @@
 import { refresh } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import { getLocalDateString, DEFAULT_TIMEZONE } from "@/lib/dates";
+import {
+  getLocalDateString,
+  getLocalWeekday,
+  localTimeToInstant,
+  instantToLocalTimeString,
+  DEFAULT_TIMEZONE,
+} from "@/lib/dates";
+import { materializeBlocks } from "@/lib/schedule";
 import type { Database } from "@/lib/supabase/types";
 
 async function getTimezone(supabase: SupabaseClient<Database>) {
@@ -113,6 +120,120 @@ export async function submitDailyReview(input: DailyReviewInput) {
       { onConflict: "user_id,date" }
     );
   if (tomorrowError) throw new Error(tomorrowError.message);
+
+  refresh();
+}
+
+// Called from the Today page on every load. Idempotent: only inserts
+// today's blocks from the weekday template the first time today is opened.
+export async function materializeTodaySchedule() {
+  const supabase = await createClient();
+  const timeZone = await getTimezone(supabase);
+  const date = await todayString(supabase);
+  const weekday = getLocalWeekday(new Date(), timeZone);
+
+  const { count } = await supabase
+    .from("schedule_blocks")
+    .select("id", { count: "exact", head: true })
+    .eq("date", date);
+  if (count) return;
+
+  const { data: templates } = await supabase
+    .from("schedule_templates")
+    .select("start_time, end_time, title, category")
+    .eq("weekday", weekday)
+    .order("sort");
+  if (!templates || templates.length === 0) return;
+
+  const { error } = await supabase
+    .from("schedule_blocks")
+    .insert(materializeBlocks(templates, date, timeZone));
+  if (error) throw new Error(error.message);
+}
+
+export async function toggleScheduleBlockDone(blockId: string, done: boolean) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("schedule_blocks").update({ done }).eq("id", blockId);
+  if (error) throw new Error(error.message);
+
+  refresh();
+}
+
+export type ScheduleBlockInput = {
+  id?: string;
+  startTime: string;
+  endTime: string;
+  title: string;
+  category: string;
+};
+
+export async function upsertScheduleBlock(input: ScheduleBlockInput) {
+  const supabase = await createClient();
+  const timeZone = await getTimezone(supabase);
+  const date = await todayString(supabase);
+  const startAt = localTimeToInstant(date, input.startTime, timeZone).toISOString();
+  const endAt = localTimeToInstant(date, input.endTime, timeZone).toISOString();
+
+  if (input.id) {
+    const { error } = await supabase
+      .from("schedule_blocks")
+      .update({ start_at: startAt, end_at: endAt, title: input.title, category: input.category })
+      .eq("id", input.id);
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await supabase.from("schedule_blocks").insert({
+      date,
+      start_at: startAt,
+      end_at: endAt,
+      title: input.title,
+      category: input.category,
+      source: "manual",
+    });
+    if (error) throw new Error(error.message);
+  }
+
+  refresh();
+}
+
+export async function deleteScheduleBlock(blockId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("schedule_blocks").delete().eq("id", blockId);
+  if (error) throw new Error(error.message);
+
+  refresh();
+}
+
+// Replaces today's weekday template with today's actual blocks.
+export async function saveTodayAsTemplate() {
+  const supabase = await createClient();
+  const timeZone = await getTimezone(supabase);
+  const date = await todayString(supabase);
+  const weekday = getLocalWeekday(new Date(), timeZone);
+
+  const { data: blocks } = await supabase
+    .from("schedule_blocks")
+    .select("start_at, end_at, title, category")
+    .eq("date", date)
+    .order("start_at");
+
+  const { error: deleteError } = await supabase
+    .from("schedule_templates")
+    .delete()
+    .eq("weekday", weekday);
+  if (deleteError) throw new Error(deleteError.message);
+
+  if (blocks && blocks.length > 0) {
+    const rows = blocks.map((b, i) => ({
+      weekday,
+      start_time: instantToLocalTimeString(b.start_at, timeZone),
+      end_time: instantToLocalTimeString(b.end_at, timeZone),
+      title: b.title,
+      category: b.category,
+      sort: i + 1,
+    }));
+    const { error: insertError } = await supabase.from("schedule_templates").insert(rows);
+    if (insertError) throw new Error(insertError.message);
+  }
 
   refresh();
 }

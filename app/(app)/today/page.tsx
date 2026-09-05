@@ -4,10 +4,12 @@ import HeaderStrip from "@/components/today/HeaderStrip";
 import PriorityCard from "@/components/today/PriorityCard";
 import HabitList from "@/components/today/HabitList";
 import AddHabitButton from "@/components/today/AddHabitButton";
+import ScheduleSection from "@/components/today/ScheduleSection";
 import DailyReviewSheet from "@/components/today/DailyReviewSheet";
 import { createClient } from "@/lib/supabase/server";
 import { getLocalDateString, getLocalWeekday, DEFAULT_TIMEZONE } from "@/lib/dates";
 import { computeHabitStreak } from "@/lib/streaks";
+import { materializeTodaySchedule } from "./actions";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -48,6 +50,8 @@ export default async function TodayPage() {
   const weekday = getLocalWeekday(new Date(), timezone);
   const streakCutoff = format(subDays(parseISO(today), STREAK_LOOKBACK_DAYS), "yyyy-MM-dd");
 
+  await materializeTodaySchedule();
+
   const [
     { data: quarterGoal },
     { data: pickableGoals },
@@ -55,6 +59,7 @@ export default async function TodayPage() {
     { data: habits },
     { data: todayLogs },
     { data: doneLogHistory },
+    { data: scheduleBlocks },
   ] = await Promise.all([
     supabase
       .from("goals")
@@ -83,6 +88,11 @@ export default async function TodayPage() {
       .select("habit_id, date")
       .eq("done", true)
       .gte("date", streakCutoff),
+    supabase
+      .from("schedule_blocks")
+      .select("id, start_at, end_at, title, category, done")
+      .eq("date", today)
+      .order("start_at"),
   ]);
 
   let quarterProgressPct: number | null = null;
@@ -138,6 +148,8 @@ export default async function TodayPage() {
           pickableGoals={pickableGoals ?? []}
           chain={chain}
         />
+
+        <ScheduleSection blocks={scheduleBlocks ?? []} timeZone={timezone} />
 
         <section className="flex flex-col gap-2">
           <h2 className="text-sm font-semibold text-muted">Habits</h2>

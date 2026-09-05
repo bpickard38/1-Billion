@@ -6,6 +6,8 @@ import {
   getWeekEnd,
   getWeekStartDateString,
   getLocalWeekday,
+  localTimeToInstant,
+  instantToLocalTimeString,
 } from "./dates.ts";
 
 const DENVER = "America/Denver";
@@ -62,4 +64,23 @@ test("getLocalWeekday: 1 = Monday ... 7 = Sunday (2026-09-04 is a Friday)", () =
   assert.equal(getLocalWeekday(new Date("2026-08-31T20:00:00Z"), DENVER), 1);
   assert.equal(getLocalWeekday(new Date("2026-09-04T20:00:00Z"), DENVER), 5);
   assert.equal(getLocalWeekday(new Date("2026-09-06T20:00:00Z"), DENVER), 7);
+});
+
+test("localTimeToInstant converts a Denver wall-clock time to UTC (MDT, UTC-6)", () => {
+  assert.equal(
+    localTimeToInstant("2026-09-05", "06:30", DENVER).toISOString(),
+    "2026-09-05T12:30:00.000Z"
+  );
+  // "HH:mm:ss" (Postgres `time` output) works the same as "HH:mm".
+  assert.equal(
+    localTimeToInstant("2026-09-05", "21:45:00", DENVER).toISOString(),
+    "2026-09-06T03:45:00.000Z"
+  );
+});
+
+test("localTimeToInstant and instantToLocalTimeString round-trip across the fall-back DST change", () => {
+  // 2026-11-01 is standard time (MST, UTC-7) after clocks fall back at 2 AM.
+  const instant = localTimeToInstant("2026-11-01", "09:00", DENVER);
+  assert.equal(instant.toISOString(), "2026-11-01T16:00:00.000Z");
+  assert.equal(instantToLocalTimeString(instant, DENVER), "09:00");
 });
