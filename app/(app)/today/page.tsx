@@ -6,12 +6,14 @@ import HabitList from "@/components/today/HabitList";
 import AddHabitButton from "@/components/today/AddHabitButton";
 import ScheduleSection from "@/components/today/ScheduleSection";
 import DailyReviewSheet from "@/components/today/DailyReviewSheet";
+import FollowUpsLine from "@/components/today/FollowUpsLine";
 import { createClient } from "@/lib/supabase/server";
 import { getLocalDateString, getLocalWeekday, DEFAULT_TIMEZONE } from "@/lib/dates";
 import { computeHabitStreak } from "@/lib/streaks";
 import { getGoalChain, computeProgressPct } from "@/lib/goals";
 import { materializeTodaySchedule } from "./actions";
 import { getCurrentWeekScore } from "@/app/(app)/week/actions";
+import { getFollowUpDueCount } from "@/app/(app)/crm/actions";
 
 const STREAK_LOOKBACK_DAYS = 370;
 
@@ -30,6 +32,7 @@ export default async function TodayPage() {
   await materializeTodaySchedule();
 
   const weekScorePromise = getCurrentWeekScore();
+  const followUpCountPromise = getFollowUpDueCount();
 
   const [
     { data: quarterGoal },
@@ -92,6 +95,7 @@ export default async function TodayPage() {
 
   const chain = await getGoalChain(supabase, dailyEntry?.priority_goal_id ?? null);
   const weekScore = await weekScorePromise;
+  const followUpCount = await followUpCountPromise;
 
   const habitDone: Record<string, boolean> = {};
   for (const log of todayLogs ?? []) habitDone[log.habit_id] = log.done;
@@ -132,6 +136,8 @@ export default async function TodayPage() {
         />
 
         <ScheduleSection blocks={scheduleBlocks ?? []} timeZone={timezone} />
+
+        <FollowUpsLine count={followUpCount} />
 
         <section className="flex flex-col gap-2">
           <h2 className="text-sm font-semibold text-muted">Habits</h2>
