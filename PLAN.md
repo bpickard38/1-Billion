@@ -12,11 +12,10 @@ This file lives at the root of the repo as `PLAN.md`. Claude reads it at the sta
 
 | Item | Decision |
 |---|---|
-| v1 features | Today page, habits, daily metrics, daily schedule (editable, Google Calendar two-way sync), goal hierarchy, weekly scorecard + Friday review gate + streak, customer research CRM + problem database, idea parking lot, skill tree (milestones + research resources), iPhone web push |
+| v1 features | Today page, habits (with per-habit streaks), daily schedule (editable, Google Calendar two-way sync), goal hierarchy, weekly review gate + streak, customer research CRM + problem database, idea parking lot, skill tree (milestones + research resources), iPhone web push. Daily/weekly metrics tracking was cut 2026-09-05 — the app is habit-only. |
 | Phase 2 (after v1 is in daily use) | Decision journal + financial cooling timer, AI coach, monthly CEO review |
 | Stack | Next.js (App Router) + TypeScript + Tailwind, Supabase (Postgres, Auth, RLS), Vercel, `web-push`, Google Calendar API |
-| Hours metrics | Manual entry at daily review |
-| Score weighting | 70% outputs / 20% inputs / 10% habits (editable in Settings) |
+| Score weighting | Cut with metrics 2026-09-05 — Phase 5 needs a new, habit-only definition |
 | Seed data | Seeded from the "1 Billion dollars" doc on first run |
 | Build location | Local folder on Brayden's PC, pushed to GitHub, auto-deployed by Vercel |
 | Users | Multiple. Public self-serve sign-up (`/signup`, Supabase Auth email+password). Each user's data is isolated by RLS (`user_id = auth.uid()`) — there is no shared/org data model, just N independent accounts. Decided 2026-09-04, reversing the original "one user" decision. |
@@ -59,9 +58,8 @@ Top to bottom, nothing else:
 - Header strip: NORTH STAR one-liner · this quarter's goal with progress bar · current week score · streak ("12 weeks").
 - **#1 Priority today** — one line, editable, linked to a goal (tap → trace-back chain up to the Dream).
 - **Schedule** — today's time blocks (from Phase 3), collapsed to the current + next block; tap to expand/edit.
-- **Habits** — checkboxes. Default set: Spiritual study, Workout, Deep work, Customer/outbound work, Technical learning, Read, Uncomfortable rep, Daily review.
-- **Metrics** — `27 / 20` style counters with +1 / +5 / custom buttons. Default daily metrics: Outbound attempts, Customer conversations, Demos, Deep work hours, Technical learning hours, Reading hours.
-- **Daily review** button (evening): three fields — What did I accomplish? What did I learn? Tomorrow's #1 task. Submitting it (a) logs hours-type metrics for the day, (b) sets tomorrow's #1 Priority, (c) checks the "Daily review" habit.
+- **Habits** — checkboxes, each showing its current streak (consecutive scheduled days completed, derived from `habit_logs`). Default set: Spiritual study, Workout, Deep work, Customer/outbound work, Technical learning, Read, Uncomfortable rep, Daily review. An "Add habit" control lets Brayden add more from the page.
+- **Daily review** button (evening): three fields — What did I accomplish? What did I learn? Tomorrow's #1 task. Submitting it (a) sets tomorrow's #1 Priority, (b) checks the "Daily review" habit.
 
 Rule: the page must load and be usable in under 2 seconds on LTE. No charts on this page.
 
@@ -80,11 +78,10 @@ Levels: Dream → 10-year → 3-year → 1-year → Quarter → Month → Week �
 Seeded chain: Build a billion-dollar company → significant equity in a $1B+ business → meaningful B2B AI company → $10k+ MRR + 100 customer conversations → Validate one painful vertical workflow (Q1: 30–40 healthcare + 15–20 energy interviews) → 20 interviews this month → 5 interviews this week → today's action.
 
 ### 3.5 Week (scorecard + review)
-- Week runs Monday → Sunday. Scorecard table: Metric · Goal · Actual · % for every active weekly metric. Seeded weekly targets from the doc: Startup hours 20, Outbound 100, Customer conversations 5, Demos 3, Product shipped 1, Technical study 5h, Reading 3h, Founder/expert conversations 2, Exercise 4, Revenue (tracked, no target), Sleep avg 7.5h.
-- **Score** = 0.7 × avg(output metric %) + 0.2 × avg(input metric %) + 0.1 × habit completion %. Each metric capped at 100%. Labels: ≥85 Excellent · 70–84 Good · 50–69 Weak · <50 Failed. Weights editable in Settings.
-- Metric kind is explicit in the data: `output` (outbound, conversations, demos, product shipped, founder meetings, revenue, customers) vs `input` (hours, reading) vs `habit`. The scorecard visually separates them. This is the anti-cheating feature.
+- Week runs Monday → Sunday.
+- `[DECIDE — Phase 5, not designed yet]` Metrics tracking was cut 2026-09-05, so the old metrics-weighted score (0.7 output / 0.2 input / 0.1 habit) no longer applies. Phase 5 needs a new score definition based on habit completion (and per-habit streaks) only — ask Brayden one question about the formula before building it, per rule 7.
 - **Friday review gate.** From Friday 5:00 PM local until the week closes, opening the app shows a full-screen "Weekly Review Required" card (dismissable for 2 hours at a time so you can still log things). Seven questions: accomplished / failed / why / what customers taught me / wasted time on / biggest bottleneck / next week's top 3. Submitting closes the week, freezes the score, auto-creates next week's three Week-level goals, and increments the streak. `[DECIDE]` At Monday 00:00 an unreviewed week auto-closes with its score and the streak resets to 0.
-- Week detail shows the review answers, the score breakdown, and an auto-generated one-line "Biggest issue" computed from the largest shortfall (e.g., "Build hours 9, customer conversations 2 — you built instead of selling"). No AI needed for this; it's a rule.
+- Week detail shows the review answers and the score breakdown. The old auto-generated "Biggest issue" line was metric-based (e.g. "Build hours 9, customer conversations 2") — Phase 5 needs a habit-based version of this rule, or it can be dropped.
 
 ### 3.6 CRM + problem database
 Three linked things:
@@ -153,14 +150,12 @@ All tables have `id uuid pk`, `user_id uuid references auth.users`, `created_at`
 
 | Table | Key columns |
 |---|---|
-| `profiles` | timezone (default America/Denver), week_start (mon), score_weights jsonb `{output:0.7,input:0.2,habit:0.1}`, north_star text, notification_prefs jsonb |
+| `profiles` | timezone (default America/Denver), week_start (mon), score_weights jsonb (unused since metrics were cut — Phase 5 redefines), north_star text, notification_prefs jsonb |
 | `goals` | level (dream/10yr/3yr/1yr/quarter/month/week/today), parent_id, title, description, target_value, target_unit, current_value, status (active/done/dropped), starts_on, ends_on, sort |
-| `habits` | name, days_of_week int[] (1–7), sort, active |
+| `habits` | name, days_of_week int[] (1–7), sort, active. Streaks are derived from `habit_logs`, not stored — see `/lib/streaks.ts`. |
 | `habit_logs` | habit_id, date, done — unique(habit_id, date) |
-| `metrics` | name, unit (count/hours/dollars), kind (output/input/habit), daily_target, weekly_target, sort, active, entry_mode (counter/daily_review) |
-| `metric_logs` | metric_id, date, value — unique(metric_id, date) |
-| `daily_entries` | date, priority_text, priority_goal_id, accomplished, learned, tomorrow_priority, submitted_at — unique(date) |
-| `weekly_reviews` | week_start date, answers jsonb (7 keys), score numeric, breakdown jsonb, biggest_issue text, closed_at, auto_closed bool — unique(week_start) |
+| `daily_entries` | date, priority_text, priority_goal_id, accomplished, learned, tomorrow_priority, submitted_at — unique(user_id, date) |
+| `weekly_reviews` | week_start date, answers jsonb (7 keys), score numeric, breakdown jsonb, biggest_issue text, closed_at, auto_closed bool — unique(user_id, week_start) |
 | `schedule_templates` | weekday int, start_time, end_time, title, category, sort |
 | `schedule_blocks` | date, start_at timestamptz, end_at, title, category, done, source (template/manual/google), google_event_id, google_etag |
 | `contacts` | name, company, industry, role, type, email, phone, linkedin, where_met, expertise, interests, how_i_can_help, last_contact_on, follow_up_on, would_pilot, notes |
@@ -175,7 +170,7 @@ All tables have `id uuid pk`, `user_id uuid references auth.users`, `created_at`
 | `push_subscriptions` | endpoint (unique), p256dh, auth, user_agent |
 | `google_tokens` | refresh_token, access_token, expires_at, calendar_id ("1B" calendar), sync_token |
 
-Views (SQL) used by the app: `weekly_metric_totals(week_start)`, `problem_aggregates`. Score math lives in `/lib/score.ts` (TypeScript), not SQL, so it's unit-testable and the weights can change without a migration.
+Views (SQL) used by the app: `problem_aggregates`. Score math (Phase 5, not yet designed) will live in `/lib/score.ts` (TypeScript), not SQL, so it's unit-testable — same pattern as `/lib/streaks.ts` for habit streaks.
 
 ---
 
@@ -249,8 +244,9 @@ Each phase = one Claude session (some may take two). Each has: Goal · Steps · 
 **What to understand:** self-referencing tables (`parent_id`) and how a recursive CTE walks the chain.
 
 ### Phase 5 — Weekly scorecard, review gate, streak
-1. `/lib/score.ts`: pure function `(metrics, totals, habitStats, weights) → {score, breakdown, biggestIssue}`. Unit tests with the doc's example (82% week) and edge cases (no target, over-achievement capped, zero-division).
-2. Week tab: scorecard table grouped Outputs / Inputs / Habits with per-row % and the score with label. Prior weeks list with score + label.
+`[DECIDE]` Metrics were cut 2026-09-05 (see §3.5) — ask Brayden how the weekly score should be defined from habit completion alone before writing `/lib/score.ts`; the steps below assume a metrics-based scorecard and need revisiting first.
+1. `/lib/score.ts`: pure function `(habitStats, weights) → {score, breakdown, biggestIssue}`, mirroring `/lib/streaks.ts`'s pattern. Unit tests with edge cases (no habits active that week, zero-division).
+2. Week tab: scorecard table of habit completion % per habit, plus the score with label. Prior weeks list with score + label.
 3. Review flow: seven questions, saved as draft on every keystroke, submit → `weekly_reviews` row, `closed_at`, three next-week goals created from the "top 3" answer, streak recomputed = consecutive closed non-auto-closed weeks.
 4. Gate: after Friday 5 PM local and before close, a full-screen card on app open; "Later" hides it for 2 hours (localStorage timestamp). Route `/week/review` always accessible.
 5. Auto-close: a daily job (Phase 9's cron route) closes any week older than the current one that has no review, with `auto_closed = true`. Until Phase 9, a "Close unreviewed weeks" button in Settings does the same thing.
@@ -258,7 +254,7 @@ Each phase = one Claude session (some may take two). Each has: Goal · Steps · 
 
 **Done when:** a fake week of data produces the expected score in tests and on screen; submitting the review creates next week's goals; streak shows 1.
 **Manual test:** run your first real Friday review in the app.
-**What to understand:** why the score is a pure function with tests instead of SQL — and the difference between output and input metrics in the data.
+**What to understand:** why the score is a pure function with tests instead of SQL.
 
 ### Phase 6 — CRM + problem database
 1. CRM tab: contacts list (search, filter by type, sort by follow-up date), overdue/today follow-up count badge.
@@ -353,6 +349,8 @@ This is the most fragile phase. Standalone schedule (Phase 3) must be in daily u
 
 **Phase 1 —** Row Level Security means every one of the 19 tables carries a policy that runs on *every* query: `user_id = auth.uid()` (profiles uses its own `id`, since that table is the auth user). Postgres injects this as a hidden `WHERE` clause, so a query never has to filter by user itself — the database refuses to return or write rows that aren't yours, even if the app code has a bug. This is what actually enforces "N independent accounts," not application logic. One gotcha this phase surfaced: the `on_auth_user_created` trigger that auto-creates a `profiles` row only fires for signups *after* the trigger exists — Brayden's own account predated it, so `0003_backfill_profiles.sql` had to backfill it, and `seed.sql` now upserts the profile instead of assuming the row is already there. `weekly_metric_totals` and `problem_aggregates` are views created `with (security_invoker = true)`, so they inherit the querying user's RLS instead of the view-owner's — without that flag a view silently bypasses RLS.
 
+**Phase 2 —** Habit checkboxes use `useOptimistic` + `useTransition` (React 19 / Next 16's pattern, not the old `revalidatePath`): clicking flips the checkbox on the current frame via a local reducer, then the Server Action runs in the background and calls `refresh()` on success. If the write fails, the thrown error is forwarded to the nearest error boundary and the optimistic value reverts to the last real server-rendered prop — nothing was silently lost, since `habit_logs` was never written. Streaks are a second example of *derived state* (same idea as skill status in §3.7): there's no `current_streak` column anywhere — `/lib/streaks.ts` walks `habit_logs` backward from today, skipping days the habit isn't scheduled on (`days_of_week`), and stops at the first missed scheduled day. That's also why removing metrics 2026-09-05 was a same-day, low-risk change: nothing else in the schema depended on `metrics`/`metric_logs`, so dropping them was one migration, not a cascade of fixes.
+
 ---
 
 ## 9. Change log
@@ -363,3 +361,6 @@ This is the most fragile phase. Standalone schedule (Phase 3) must be in daily u
 | 2026-09-04 | Phase 0 built. Dropped Google Fonts (network fetch at build time; system fonts render as SF on iPhone). `typecheck` script runs `next typegen` first so `PageProps`/`LayoutProps` globals exist. | Claude |
 | 2026-09-04 | Reversed the "one user" decision: public self-serve `/signup` added, Supabase sign-ups re-enabled. Data isolation is unchanged — still RLS (`user_id = auth.uid()`) on every table, anon key stays public, service-role key still untouched until Phase 9. See §0. | Claude + Brayden |
 | 2026-09-04 | Phase 1 built: `0001_core.sql` (19 tables + RLS), `0002_views.sql` (`weekly_metric_totals`, `problem_aggregates`), `0003_backfill_profiles.sql` (profile row for the pre-trigger account), `seed.sql`, `lib/dates.ts` + tests, `lib/supabase/types.ts`. §5's per-table specs didn't carry `user_id` into their `unique(...)` keys after the multi-user pivot — added it (`daily_entries`: `unique(user_id, date)`, `weekly_reviews`: `unique(user_id, week_start)`, plus new `unique` keys per table so `seed.sql` can be idempotent) so two users can't collide on the same date/slug. Supabase project region came up as `us-east-1`, not the "US West" from §Phase 0 — already created, not worth recreating over. | Claude |
+| 2026-09-04 | Phase 2 built: `app/(app)/today/actions.ts` + `components/today/*` (Priority, Habits, Metrics, Daily review, Header). `lib/dates.ts` gained `getLocalWeekday`; both Supabase clients typed against `lib/supabase/types.ts`. | Claude |
+| 2026-09-05 | Fixed production 404: the Vercel project's Framework Preset was "Other", so it served `public/` as a static site and never wired up the Next.js app. Added `vercel.json` (`"framework": "nextjs"`) to force it regardless of the dashboard setting. | Claude |
+| 2026-09-05 | Cut metrics tracking from v1 entirely (Brayden's call) — habits only. `0004_drop_metrics.sql` drops `weekly_metric_totals`, `metric_logs`, `metrics`; removed from `seed.sql`, Today page, and PLAN.md (§0, §3.2, §3.5, §5). Added an "Add habit" control and per-habit streaks to Today — `/lib/streaks.ts` derives the current streak from `habit_logs` rather than storing one. Phase 5's weekly score needs a new, habit-only definition before it's built — flagged `[DECIDE]` in §3.5 and §6. | Claude + Brayden |

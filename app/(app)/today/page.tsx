@@ -1,15 +1,19 @@
+import { parseISO, subDays, format } from "date-fns";
 import PageTitle from "@/components/PageTitle";
 import HeaderStrip from "@/components/today/HeaderStrip";
 import PriorityCard from "@/components/today/PriorityCard";
 import HabitList from "@/components/today/HabitList";
-import MetricList from "@/components/today/MetricList";
+import AddHabitButton from "@/components/today/AddHabitButton";
 import DailyReviewSheet from "@/components/today/DailyReviewSheet";
 import { createClient } from "@/lib/supabase/server";
 import { getLocalDateString, getLocalWeekday, DEFAULT_TIMEZONE } from "@/lib/dates";
+import { computeHabitStreak } from "@/lib/streaks";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
 type ChainLink = { id: string; title: string; level: string };
+
+const STREAK_LOOKBACK_DAYS = 370;
 
 // Goal levels are shallow (Dream..Today, 8 max) so a naive parent_id walk is
 // plenty fast here. Phase 4 promotes this to a shared GoalChain component,
@@ -42,16 +46,15 @@ export default async function TodayPage() {
   const timezone = profile?.timezone ?? DEFAULT_TIMEZONE;
   const today = getLocalDateString(new Date(), timezone);
   const weekday = getLocalWeekday(new Date(), timezone);
+  const streakCutoff = format(subDays(parseISO(today), STREAK_LOOKBACK_DAYS), "yyyy-MM-dd");
 
   const [
     { data: quarterGoal },
     { data: pickableGoals },
     { data: dailyEntry },
     { data: habits },
-    { data: habitLogs },
-    { data: counterMetrics },
-    { data: counterLogs },
-    { data: hoursMetrics },
+    { data: todayLogs },
+    { data: doneLogHistory },
   ] = await Promise.all([
     supabase
       .from("goals")
@@ -70,24 +73,16 @@ export default async function TodayPage() {
     supabase.from("daily_entries").select("*").eq("date", today).maybeSingle(),
     supabase
       .from("habits")
-      .select("id, name")
+      .select("id, name, days_of_week")
       .eq("active", true)
       .contains("days_of_week", [weekday])
       .order("sort"),
     supabase.from("habit_logs").select("habit_id, done").eq("date", today),
     supabase
-      .from("metrics")
-      .select("id, name, unit, weekly_target")
-      .eq("active", true)
-      .eq("entry_mode", "counter")
-      .order("sort"),
-    supabase.from("metric_logs").select("metric_id, value").eq("date", today),
-    supabase
-      .from("metrics")
-      .select("id, name")
-      .eq("active", true)
-      .eq("entry_mode", "daily_review")
-      .order("sort"),
+      .from("habit_logs")
+      .select("habit_id, date")
+      .eq("done", true)
+      .gte("date", streakCutoff),
   ]);
 
   let quarterProgressPct: number | null = null;
@@ -109,10 +104,22 @@ export default async function TodayPage() {
   const chain = await getGoalChain(supabase, dailyEntry?.priority_goal_id ?? null);
 
   const habitDone: Record<string, boolean> = {};
-  for (const log of habitLogs ?? []) habitDone[log.habit_id] = log.done;
+  for (const log of todayLogs ?? []) habitDone[log.habit_id] = log.done;
 
-  const metricValues: Record<string, number> = {};
-  for (const log of counterLogs ?? []) metricValues[log.metric_id] = log.value;
+  const doneDatesByHabit = new Map<string, Set<string>>();
+  for (const log of doneLogHistory ?? []) {
+    if (!doneDatesByHabit.has(log.habit_id)) doneDatesByHabit.set(log.habit_id, new Set());
+    doneDatesByHabit.get(log.habit_id)!.add(log.date);
+  }
+
+  const streaks: Record<string, number> = {};
+  for (const habit of habits ?? []) {
+    streaks[habit.id] = computeHabitStreak(
+      doneDatesByHabit.get(habit.id) ?? new Set(),
+      habit.days_of_week,
+      today
+    );
+  }
 
   return (
     <>
@@ -132,20 +139,13 @@ export default async function TodayPage() {
           chain={chain}
         />
 
-        <section>
-          <h2 className="mb-2 text-sm font-semibold text-muted">Habits</h2>
-          <HabitList habits={habits ?? []} initialDone={habitDone} />
+        <section className="flex flex-col gap-2">
+          <h2 className="text-sm font-semibold text-muted">Habits</h2>
+          <HabitList habits={habits ?? []} initialDone={habitDone} streaks={streaks} />
+          <AddHabitButton />
         </section>
 
-        <section>
-          <h2 className="mb-2 text-sm font-semibold text-muted">Metrics</h2>
-          <MetricList metrics={counterMetrics ?? []} initialValues={metricValues} />
-        </section>
-
-        <DailyReviewSheet
-          hoursMetrics={hoursMetrics ?? []}
-          alreadySubmitted={Boolean(dailyEntry?.submitted_at)}
-        />
+        <DailyReviewSheet alreadySubmitted={Boolean(dailyEntry?.submitted_at)} />
       </div>
     </>
   );

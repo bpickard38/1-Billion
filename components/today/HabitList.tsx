@@ -9,9 +9,11 @@ type Habit = { id: string; name: string };
 export default function HabitList({
   habits,
   initialDone,
+  streaks,
 }: {
   habits: Habit[];
   initialDone: Record<string, boolean>;
+  streaks: Record<string, number>;
 }) {
   const [done, setDone] = useOptimistic(
     initialDone,
@@ -38,6 +40,7 @@ export default function HabitList({
     <ul className="grid grid-cols-2 gap-2">
       {habits.map((habit) => {
         const checked = Boolean(done[habit.id]);
+        const streak = streaks[habit.id] ?? 0;
         return (
           <li key={habit.id}>
             <button
@@ -54,7 +57,10 @@ export default function HabitList({
               >
                 {checked && <Check size={14} strokeWidth={3} />}
               </span>
-              {habit.name}
+              <span className="flex-1">{habit.name}</span>
+              {streak > 0 && (
+                <span className="shrink-0 text-xs text-accent">🔥{streak}</span>
+              )}
             </button>
           </li>
         );

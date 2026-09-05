@@ -3,13 +3,9 @@
 import { startTransition, useActionState, useState } from "react";
 import { submitDailyReview } from "@/app/(app)/today/actions";
 
-type HoursMetric = { id: string; name: string };
-
 export default function DailyReviewSheet({
-  hoursMetrics,
   alreadySubmitted,
 }: {
-  hoursMetrics: HoursMetric[];
   alreadySubmitted: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -19,12 +15,8 @@ export default function DailyReviewSheet({
       const accomplished = String(formData.get("accomplished") ?? "");
       const learned = String(formData.get("learned") ?? "");
       const tomorrowPriority = String(formData.get("tomorrowPriority") ?? "");
-      const hours = hoursMetrics.map((metric) => ({
-        metricId: metric.id,
-        value: Number(formData.get(`hours-${metric.id}`)) || 0,
-      }));
 
-      await submitDailyReview({ accomplished, learned, tomorrowPriority, hours });
+      await submitDailyReview({ accomplished, learned, tomorrowPriority });
 
       startTransition(() => setIsOpen(false));
       return { key: prev.key + 1 };
@@ -82,23 +74,6 @@ export default function DailyReviewSheet({
                   className="rounded border border-border bg-transparent p-2 text-sm"
                 />
               </label>
-
-              {hoursMetrics.length > 0 && (
-                <div className="flex flex-col gap-2 border-t border-border pt-3">
-                  {hoursMetrics.map((metric) => (
-                    <label key={metric.id} className="flex items-center justify-between text-sm">
-                      {metric.name}
-                      <input
-                        type="number"
-                        step="0.5"
-                        min="0"
-                        name={`hours-${metric.id}`}
-                        className="w-20 rounded border border-border bg-transparent px-2 py-1 text-right text-sm"
-                      />
-                    </label>
-                  ))}
-                </div>
-              )}
 
               <button
                 type="submit"

@@ -137,24 +137,6 @@ begin
   on conflict (user_id, name) do nothing;
 
   -- ---------------------------------------------------------------------
-  -- metrics (Part XI weekly scorecard)
-  -- ---------------------------------------------------------------------
-  insert into public.metrics (user_id, name, unit, kind, weekly_target, sort, entry_mode)
-  values
-    (v_user_id, 'Outbound attempts', 'count', 'output', 100, 1, 'counter'),
-    (v_user_id, 'Customer conversations', 'count', 'output', 5, 2, 'counter'),
-    (v_user_id, 'Demos', 'count', 'output', 3, 3, 'counter'),
-    (v_user_id, 'Product shipped', 'count', 'output', 1, 4, 'counter'),
-    (v_user_id, 'Founder/expert conversations', 'count', 'output', 2, 5, 'counter'),
-    (v_user_id, 'Revenue', 'dollars', 'output', null, 6, 'counter'),
-    (v_user_id, 'Deep work hours', 'hours', 'input', 20, 7, 'daily_review'),
-    (v_user_id, 'Technical learning hours', 'hours', 'input', 5, 8, 'daily_review'),
-    (v_user_id, 'Reading hours', 'hours', 'input', 3, 9, 'daily_review'),
-    (v_user_id, 'Exercise sessions', 'count', 'input', 4, 10, 'counter'),
-    (v_user_id, 'Sleep hours', 'hours', 'input', 7.5, 11, 'daily_review')
-  on conflict (user_id, name) do nothing;
-
-  -- ---------------------------------------------------------------------
   -- weekday schedule templates (Part VII weekly OS + Part VIII daily skeleton)
   -- weekday: 1=Mon ... 7=Sun
   -- ---------------------------------------------------------------------

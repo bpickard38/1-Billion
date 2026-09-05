@@ -47,37 +47,20 @@ export async function toggleHabit(habitId: string, done: boolean) {
   refresh();
 }
 
-export async function adjustMetric(metricId: string, delta: number) {
-  const supabase = await createClient();
-  const date = await todayString(supabase);
+export async function addHabit(name: string) {
+  const trimmed = name.trim();
+  if (!trimmed) return;
 
-  const { data: existing } = await supabase
-    .from("metric_logs")
-    .select("value")
-    .eq("metric_id", metricId)
-    .eq("date", date)
+  const supabase = await createClient();
+  const { data: lastHabit } = await supabase
+    .from("habits")
+    .select("sort")
+    .order("sort", { ascending: false })
+    .limit(1)
     .maybeSingle();
+  const sort = (lastHabit?.sort ?? 0) + 1;
 
-  const value = Math.max(0, (existing?.value ?? 0) + delta);
-
-  const { error } = await supabase
-    .from("metric_logs")
-    .upsert({ metric_id: metricId, date, value }, { onConflict: "metric_id,date" });
-  if (error) throw new Error(error.message);
-
-  refresh();
-}
-
-export async function setMetricValue(metricId: string, value: number) {
-  const supabase = await createClient();
-  const date = await todayString(supabase);
-
-  const { error } = await supabase
-    .from("metric_logs")
-    .upsert(
-      { metric_id: metricId, date, value: Math.max(0, value) },
-      { onConflict: "metric_id,date" }
-    );
+  const { error } = await supabase.from("habits").insert({ name: trimmed, sort });
   if (error) throw new Error(error.message);
 
   refresh();
@@ -87,11 +70,10 @@ export type DailyReviewInput = {
   accomplished: string;
   learned: string;
   tomorrowPriority: string;
-  hours: { metricId: string; value: number }[];
 };
 
-// Submitting the daily review: (a) logs the hours-type metrics for today,
-// (b) sets tomorrow's #1 priority, (c) checks the "Daily review" habit.
+// Submitting the daily review: (a) sets tomorrow's #1 priority, (b) checks
+// the "Daily review" habit.
 export async function submitDailyReview(input: DailyReviewInput) {
   const supabase = await createClient();
   const date = await todayString(supabase);
@@ -108,16 +90,6 @@ export async function submitDailyReview(input: DailyReviewInput) {
     { onConflict: "user_id,date" }
   );
   if (entryError) throw new Error(entryError.message);
-
-  if (input.hours.length > 0) {
-    const { error: hoursError } = await supabase
-      .from("metric_logs")
-      .upsert(
-        input.hours.map((h) => ({ metric_id: h.metricId, date, value: h.value })),
-        { onConflict: "metric_id,date" }
-      );
-    if (hoursError) throw new Error(hoursError.message);
-  }
 
   const { data: reviewHabit } = await supabase
     .from("habits")

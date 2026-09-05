@@ -435,89 +435,6 @@ export type Database = {
           },
         ]
       }
-      metric_logs: {
-        Row: {
-          created_at: string
-          date: string
-          id: string
-          metric_id: string
-          updated_at: string
-          user_id: string
-          value: number
-        }
-        Insert: {
-          created_at?: string
-          date: string
-          id?: string
-          metric_id: string
-          updated_at?: string
-          user_id?: string
-          value?: number
-        }
-        Update: {
-          created_at?: string
-          date?: string
-          id?: string
-          metric_id?: string
-          updated_at?: string
-          user_id?: string
-          value?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "metric_logs_metric_id_fkey"
-            columns: ["metric_id"]
-            isOneToOne: false
-            referencedRelation: "metrics"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      metrics: {
-        Row: {
-          active: boolean
-          created_at: string
-          daily_target: number | null
-          entry_mode: string
-          id: string
-          kind: string
-          name: string
-          sort: number
-          unit: string
-          updated_at: string
-          user_id: string
-          weekly_target: number | null
-        }
-        Insert: {
-          active?: boolean
-          created_at?: string
-          daily_target?: number | null
-          entry_mode: string
-          id?: string
-          kind: string
-          name: string
-          sort?: number
-          unit: string
-          updated_at?: string
-          user_id?: string
-          weekly_target?: number | null
-        }
-        Update: {
-          active?: boolean
-          created_at?: string
-          daily_target?: number | null
-          entry_mode?: string
-          id?: string
-          kind?: string
-          name?: string
-          sort?: number
-          unit?: string
-          updated_at?: string
-          user_id?: string
-          weekly_target?: number | null
-        }
-        Relationships: []
-      }
       problems: {
         Row: {
           access: string | null
@@ -918,23 +835,6 @@ export type Database = {
           user_id: string | null
         }
         Relationships: []
-      }
-      weekly_metric_totals: {
-        Row: {
-          metric_id: string | null
-          total: number | null
-          user_id: string | null
-          week_start: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "metric_logs_metric_id_fkey"
-            columns: ["metric_id"]
-            isOneToOne: false
-            referencedRelation: "metrics"
-            referencedColumns: ["id"]
-          },
-        ]
       }
     }
     Functions: {
