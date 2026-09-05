@@ -79,3 +79,12 @@ export function instantToLocalTimeString(
 ): string {
   return format(toZonedTime(new Date(instant), timeZone), "HH:mm");
 }
+
+/** Minutes since local midnight of `instant` in `timeZone` — positions a calendar-grid block. */
+export function localMinutesSinceMidnight(
+  instant: Date | string,
+  timeZone: string = DEFAULT_TIMEZONE
+): number {
+  const zoned = toZonedTime(new Date(instant), timeZone);
+  return zoned.getHours() * 60 + zoned.getMinutes();
+}

@@ -8,6 +8,7 @@ import {
   getLocalWeekday,
   localTimeToInstant,
   instantToLocalTimeString,
+  localMinutesSinceMidnight,
 } from "./dates.ts";
 
 const DENVER = "America/Denver";
@@ -83,4 +84,10 @@ test("localTimeToInstant and instantToLocalTimeString round-trip across the fall
   const instant = localTimeToInstant("2026-11-01", "09:00", DENVER);
   assert.equal(instant.toISOString(), "2026-11-01T16:00:00.000Z");
   assert.equal(instantToLocalTimeString(instant, DENVER), "09:00");
+});
+
+test("localMinutesSinceMidnight matches the Denver wall-clock time (MDT, UTC-6)", () => {
+  assert.equal(localMinutesSinceMidnight("2026-09-05T12:30:00.000Z", DENVER), 6 * 60 + 30);
+  assert.equal(localMinutesSinceMidnight("2026-09-05T06:00:00.000Z", DENVER), 0);
+  assert.equal(localMinutesSinceMidnight("2026-09-05T05:59:00.000Z", DENVER), 23 * 60 + 59);
 });
