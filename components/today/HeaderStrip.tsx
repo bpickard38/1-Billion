@@ -2,10 +2,14 @@ export default function HeaderStrip({
   northStar,
   quarterGoalTitle,
   quarterProgressPct,
+  weekScore,
+  weekStreak,
 }: {
   northStar: string | null;
   quarterGoalTitle: string | null;
   quarterProgressPct: number | null;
+  weekScore: number;
+  weekStreak: number;
 }) {
   return (
     <div className="flex flex-col gap-2 border-b border-border pb-3">
@@ -26,8 +30,8 @@ export default function HeaderStrip({
       )}
 
       <div className="flex items-center gap-4 text-sm text-muted">
-        <span>Week score: —</span>
-        <span>Streak: —</span>
+        <span>Week score: {weekScore}%</span>
+        <span>Streak: {weekStreak}w</span>
       </div>
     </div>
   );

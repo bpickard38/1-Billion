@@ -9,6 +9,7 @@ import {
   localTimeToInstant,
   instantToLocalTimeString,
   localMinutesSinceMidnight,
+  isAfterWeeklyReviewCutoff,
 } from "./dates.ts";
 
 const DENVER = "America/Denver";
@@ -90,4 +91,17 @@ test("localMinutesSinceMidnight matches the Denver wall-clock time (MDT, UTC-6)"
   assert.equal(localMinutesSinceMidnight("2026-09-05T12:30:00.000Z", DENVER), 6 * 60 + 30);
   assert.equal(localMinutesSinceMidnight("2026-09-05T06:00:00.000Z", DENVER), 0);
   assert.equal(localMinutesSinceMidnight("2026-09-05T05:59:00.000Z", DENVER), 23 * 60 + 59);
+});
+
+test("isAfterWeeklyReviewCutoff: false before Friday 5 PM local, true at and after it (2026-09-04 is a Friday, MDT UTC-6)", () => {
+  assert.equal(isAfterWeeklyReviewCutoff(new Date("2026-09-04T22:59:00Z"), DENVER), false); // 4:59 PM Denver
+  assert.equal(isAfterWeeklyReviewCutoff(new Date("2026-09-04T23:00:00Z"), DENVER), true); // 5:00 PM Denver
+  assert.equal(isAfterWeeklyReviewCutoff(new Date("2026-09-04T23:59:00Z"), DENVER), true); // 5:59 PM Denver
+});
+
+test("isAfterWeeklyReviewCutoff: true all through Saturday and Sunday, false Monday-Thursday", () => {
+  assert.equal(isAfterWeeklyReviewCutoff(new Date("2026-09-05T13:00:00Z"), DENVER), true); // Saturday morning
+  assert.equal(isAfterWeeklyReviewCutoff(new Date("2026-09-06T23:00:00Z"), DENVER), true); // Sunday night
+  assert.equal(isAfterWeeklyReviewCutoff(new Date("2026-08-31T13:00:00Z"), DENVER), false); // Monday
+  assert.equal(isAfterWeeklyReviewCutoff(new Date("2026-09-03T23:59:00Z"), DENVER), false); // Thursday night
 });

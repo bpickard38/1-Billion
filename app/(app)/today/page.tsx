@@ -11,6 +11,7 @@ import { getLocalDateString, getLocalWeekday, DEFAULT_TIMEZONE } from "@/lib/dat
 import { computeHabitStreak } from "@/lib/streaks";
 import { getGoalChain, computeProgressPct } from "@/lib/goals";
 import { materializeTodaySchedule } from "./actions";
+import { getCurrentWeekScore } from "@/app/(app)/week/actions";
 
 const STREAK_LOOKBACK_DAYS = 370;
 
@@ -27,6 +28,8 @@ export default async function TodayPage() {
   const streakCutoff = format(subDays(parseISO(today), STREAK_LOOKBACK_DAYS), "yyyy-MM-dd");
 
   await materializeTodaySchedule();
+
+  const weekScorePromise = getCurrentWeekScore();
 
   const [
     { data: quarterGoal },
@@ -88,6 +91,7 @@ export default async function TodayPage() {
   }
 
   const chain = await getGoalChain(supabase, dailyEntry?.priority_goal_id ?? null);
+  const weekScore = await weekScorePromise;
 
   const habitDone: Record<string, boolean> = {};
   for (const log of todayLogs ?? []) habitDone[log.habit_id] = log.done;
@@ -116,6 +120,8 @@ export default async function TodayPage() {
           northStar={profile?.north_star ?? null}
           quarterGoalTitle={quarterGoal?.title ?? null}
           quarterProgressPct={quarterProgressPct}
+          weekScore={weekScore.score}
+          weekStreak={weekScore.streak}
         />
 
         <PriorityCard

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import PageTitle from "@/components/PageTitle";
+import CloseUnreviewedWeeksButton from "@/components/more/CloseUnreviewedWeeksButton";
 import { logout } from "@/app/login/actions";
 
 export default function MorePage() {
@@ -11,7 +12,13 @@ export default function MorePage() {
           Schedule templates
         </Link>
       </nav>
-      <p className="text-muted mb-8">Skills, Ideas and Settings arrive in later phases.</p>
+      <p className="text-muted mb-2">Skills and Ideas arrive in later phases.</p>
+
+      <p className="mb-2 mt-6 text-xs uppercase tracking-wide text-muted">Settings</p>
+      <div className="mb-8 flex flex-col gap-2">
+        <CloseUnreviewedWeeksButton />
+      </div>
+
       <form action={logout}>
         <button type="submit" className="text-bad text-sm">
           Sign out

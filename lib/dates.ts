@@ -88,3 +88,15 @@ export function localMinutesSinceMidnight(
   const zoned = toZonedTime(new Date(instant), timeZone);
   return zoned.getHours() * 60 + zoned.getMinutes();
 }
+
+/** True from Friday 5:00 PM local through the end of Sunday — the weekly review gate's window. */
+export function isAfterWeeklyReviewCutoff(
+  instant: Date,
+  timeZone: string = DEFAULT_TIMEZONE
+): boolean {
+  const zoned = toZonedTime(instant, timeZone);
+  const weekday = getISODay(zoned); // 1 = Monday ... 7 = Sunday
+  if (weekday < 5) return false;
+  if (weekday > 5) return true;
+  return zoned.getHours() >= 17;
+}
