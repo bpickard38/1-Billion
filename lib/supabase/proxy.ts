@@ -35,10 +35,12 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const isAuthPage = path.startsWith("/login") || path.startsWith("/signup");
-  // Privacy/Terms are linked from the Google OAuth consent screen, which
+  // Privacy/Terms/"/" are linked from the Google OAuth consent screen, which
   // Google itself (and logged-out visitors) must be able to load — unlike
-  // /login and /signup, a signed-in user can still view these too.
-  const isPublicPage = path.startsWith("/privacy") || path.startsWith("/terms");
+  // /login and /signup, a signed-in user can still view these too. "/"
+  // handles its own logged-in redirect to /today (app/page.tsx), so it's
+  // an exact match here, not startsWith (which would match every route).
+  const isPublicPage = path === "/" || path.startsWith("/privacy") || path.startsWith("/terms");
 
   if (!user && !isAuthPage && !isPublicPage) {
     const url = request.nextUrl.clone();
