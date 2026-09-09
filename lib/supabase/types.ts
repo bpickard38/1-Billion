@@ -435,6 +435,33 @@ export type Database = {
           },
         ]
       }
+      notification_log: {
+        Row: {
+          id: string
+          kind: string
+          ref_id: string
+          sent_at: string
+          sent_for: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          kind: string
+          ref_id?: string
+          sent_at?: string
+          sent_for: string
+          user_id?: string
+        }
+        Update: {
+          id?: string
+          kind?: string
+          ref_id?: string
+          sent_at?: string
+          sent_for?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       problems: {
         Row: {
           access: string | null
@@ -534,6 +561,39 @@ export type Database = {
           timezone?: string
           updated_at?: string
           week_start?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string
         }
         Relationships: []
       }
