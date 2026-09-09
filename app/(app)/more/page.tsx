@@ -3,11 +3,23 @@ import PageTitle from "@/components/PageTitle";
 import CloseUnreviewedWeeksButton from "@/components/more/CloseUnreviewedWeeksButton";
 import ExportCsvButtons from "@/components/more/ExportCsvButtons";
 import PushNotificationSettings from "@/components/more/PushNotificationSettings";
+import GoogleCalendarSettings from "@/components/more/GoogleCalendarSettings";
 import { logout } from "@/app/login/actions";
 import { getNotificationPrefs } from "@/app/(app)/more/notifications/actions";
+import { createClient } from "@/lib/supabase/server";
 
-export default async function MorePage() {
-  const notificationPrefs = await getNotificationPrefs();
+export default async function MorePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const [notificationPrefs, { google_error }, supabase] = await Promise.all([
+    getNotificationPrefs(),
+    searchParams,
+    createClient(),
+  ]);
+  const { data: googleTokens } = await supabase.from("google_tokens").select("id").maybeSingle();
+  const googleError = typeof google_error === "string" ? google_error : null;
 
   return (
     <>
@@ -34,8 +46,13 @@ export default async function MorePage() {
       </div>
 
       <p className="mb-2 text-xs uppercase tracking-wide text-muted">Notifications</p>
-      <div className="mb-8">
+      <div className="mb-6">
         <PushNotificationSettings initialPrefs={notificationPrefs} />
+      </div>
+
+      <p className="mb-2 text-xs uppercase tracking-wide text-muted">Google Calendar</p>
+      <div className="mb-8">
+        <GoogleCalendarSettings connected={Boolean(googleTokens)} error={googleError} />
       </div>
 
       <form action={logout}>
