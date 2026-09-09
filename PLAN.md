@@ -12,7 +12,7 @@ This file lives at the root of the repo as `PLAN.md`. Claude reads it at the sta
 
 | Item | Decision |
 |---|---|
-| v1 features | Today page, habits (with per-habit streaks), daily schedule (editable, Google Calendar two-way sync), goal hierarchy, weekly review gate + streak, customer research CRM + problem database, idea parking lot, skill tree (milestones + research resources), iPhone web push. Daily/weekly metrics tracking was cut 2026-09-05 — the app is habit-only. |
+| v1 features | Today page, habits (with per-habit streaks), daily schedule (editable, Google Calendar two-way sync), goal hierarchy (Dream → Month → Week → Today), weekly review gate + streak, skill tree (flat list, manual status), iPhone web push. Daily/weekly metrics tracking was cut 2026-09-05 — the app is habit-only. The CRM + problem database, idea parking lot, and skill milestones/resources sub-model were cut 2026-09-08 (simplification pass, see change log) — the app was accumulating small-SaaS scope creep instead of staying a daily execution tool. |
 | Phase 2 (after v1 is in daily use) | Decision journal + financial cooling timer, AI coach, monthly CEO review |
 | Stack | Next.js (App Router) + TypeScript + Tailwind, Supabase (Postgres, Auth, RLS), Vercel, `web-push`, Google Calendar API |
 | Score weighting | Cut with metrics 2026-09-05 — Phase 5 needs a new, habit-only definition |
@@ -51,15 +51,17 @@ Not building: microservices, custom auth (still Supabase Auth), agents, native a
 ## 3. Product spec (what v1 does)
 
 ### 3.1 Navigation
-Bottom tab bar, 6 tabs: **Today · Schedule · Week · Goals · CRM · More** (revised 2026-09-05 — Schedule promoted from a Today widget to its own tab, see §3.3). "More" holds Skills, Ideas, Schedule templates, Settings. Dark theme default. No marketing pages, no onboarding tour.
+Bottom tab bar, 4 tabs: **Today · Schedule · Week · More** (revised 2026-09-08 simplification pass — CRM tab cut, Goals folded into More; previously revised 2026-09-05 to promote Schedule from a Today widget to its own tab, see §3.3). "More" holds Goals, Skills, Schedule templates, Settings. Dark theme default. No marketing pages, no onboarding tour.
 
 ### 3.2 Today (home screen)
 Top to bottom, nothing else:
-- Header strip: NORTH STAR one-liner · this quarter's goal with progress bar · current week score · streak ("12 weeks").
+- Header strip: NORTH STAR one-liner · this month's goal with progress bar · current week score · streak ("12 weeks"). (Was "quarter" before the 2026-09-08 goal-level collapse, §3.4.)
 - **#1 Priority today** — one line, editable, linked to a goal (tap → trace-back chain up to the Dream).
 - **Schedule** — check-off only: today's current + next time block, each with a done checkbox. No add/edit/delete here — that's the **Schedule** tab (§3.3).
 - **Habits** — checkboxes, each showing its current streak (consecutive scheduled days completed, derived from `habit_logs`). Default set: Spiritual study, Workout, Deep work, Customer/outbound work, Technical learning, Read, Uncomfortable rep, Daily review. An "Add habit" control lets Brayden add more from the page.
 - **Daily review** button (evening): three fields — What did I accomplish? What did I learn? Tomorrow's #1 task. Submitting it (a) sets tomorrow's #1 Priority, (b) checks the "Daily review" habit.
+
+(The CRM follow-ups line and idea-review card that used to sit here were cut 2026-09-08 along with those modules — see change log.)
 
 Rule: the page must load and be usable in under 2 seconds on LTE. No charts on this page.
 
@@ -70,12 +72,12 @@ Rule: the page must load and be usable in under 2 seconds on LTE. No charts on t
 - Two-way Google Calendar sync (Phase 10): app blocks appear on a dedicated "1B" Google calendar; events on your primary Google calendar (classes, meetings) show read-only inside the day view.
 
 ### 3.4 Goals
-Levels: Dream → 10-year → 3-year → 1-year → Quarter → Month → Week → Today. Each goal has a parent, title, optional metric target (e.g. "20 interviews"), status, and dates. Views:
+Levels: Dream → Month → Week → Today (collapsed from 8 levels — Dream → 10-year → 3-year → 1-year → Quarter → Month → Week → Today — in the 2026-09-08 simplification pass; the intermediate horizons are prose context, not tracked rows, unless daily use later proves otherwise). Reachable from **More → Goals**, not its own tab (also 2026-09-08). Each goal has a parent, title, optional metric target (e.g. "20 interviews"), status, and dates. Views:
 - Tree view (collapsible).
 - Trace-back: from any goal or the Today priority, show the full chain up to the Dream.
 - Progress bar (any level with children) = % of child goals with `status = done`. Auto only, decided 2026-09-05 — no manual override.
 
-Seeded chain: Build a billion-dollar company → significant equity in a $1B+ business → meaningful B2B AI company → $10k+ MRR + 100 customer conversations → Validate one painful vertical workflow (Q1: 30–40 healthcare + 15–20 energy interviews) → 20 interviews this month → 5 interviews this week → today's action.
+Seeded chain: Build a billion-dollar company → 20 interviews this month (validating one painful vertical workflow; Q1: 30–40 healthcare + 15–20 energy interviews) → 5 interviews this week → today's action.
 
 ### 3.5 Week (scorecard + review)
 - Week runs Monday → Sunday.
@@ -84,31 +86,23 @@ Seeded chain: Build a billion-dollar company → significant equity in a $1B+ bu
 - **Friday review gate.** From Friday 5:00 PM local until the week closes, opening the app shows a full-screen "Weekly Review Required" card (dismissable for 2 hours at a time so you can still log things — a localStorage timestamp keyed by week, not a server flag). Seven questions: accomplished / failed / why / what customers taught me / wasted time on / biggest bottleneck / next week's top 3. Submitting closes the week, freezes the score, auto-creates next week's three Week-level goals (one per non-blank line of the top-3 answer), and the streak (derived, not stored — same pattern as habit streaks) becomes consecutive closed non-auto-closed weeks. `[DECIDE]` (still open — Phase 9 territory) At Monday 00:00 an unreviewed week auto-closes with its score and the streak resets to 0; until Phase 9's cron exists, More → Settings → "Close unreviewed weeks" does this manually, on demand, looking back up to 52 weeks.
 - Week detail (`/week/review`) shows the review answers and score breakdown once closed; the form itself is the always-accessible route the gate's "Start review" button sends you to.
 
-### 3.6 CRM + problem database
-Three linked things:
-- **Contacts** — name, company, industry, role, type (customer research / founder / industry expert / vendor), email, phone, LinkedIn, where met, expertise, what they care about, how I can help them, last contact date, follow-up date, would pilot? (yes/maybe/no), notes. This doubles as the networking CRM from the doc.
-- **Interviews** — linked to a contact: date, raw notes, current solution, estimated cost of the problem, pain score 1–10, would pilot?, follow-up action. One interview can tag multiple problems.
-- **Problems** — the doc's problem-database columns: problem, user, buyer, frequency, existing solution, labor cost, revenue impact, urgency /10, WTP, AI opportunity /10, competition, TAM, expansion, access, score /100 (manual or computed `[DECIDE]`).
-- **Aggregation view** — per problem: times mentioned, average pain score, % who would pilot, industries. Sorted by mentions × avg pain. This is the "choose with evidence" screen.
-- Follow-ups due today/overdue show as a count on the CRM tab and as a line on Today.
-- CSV export of all three tables (Settings).
+### 3.6 CRM + problem database — cut 2026-09-08
+Removed entirely (simplification pass — Brayden's call: not earning its complexity for daily execution). Contacts/interviews/problems data was exported to CSV before the tables were dropped (`supabase/migrations/0008_simplify.sql`). What this section used to describe: contacts (name, company, industry, role, type, contact info, notes), interviews linked to a contact with pain score/would-pilot/follow-up, a 16-column problem-scoring table, an aggregation view sorted by mentions × avg pain, and CSV export. May come back later if customer-research volume actually demands structured tracking — until then, use notes.
 
-### 3.7 Skill tree
+### 3.7 Skill tree — simplified 2026-09-08
 - Categories seeded from the doc: Sales, Product, Technology, AI Engineering, Finance, Leadership, Communication (+ Racing Engineering as a side tree).
-- Each skill has: status (🔴 not started / 🟡 in progress / ✅ proven), a list of **proof-of-skill milestones** (e.g., "Make 100 cold calls", "Close a $1,000+ B2B contract", "Build an agent with a 100-case eval suite"), and a list of **research resources** (book, podcast episode, doc, course, person to ask) with a note on *how* to learn it.
-- Bar % = proven milestones ÷ total milestones. Studying a resource never moves the bar. Checking a milestone requires a one-line "proof" (what/when).
-- Seeded milestones come from the doc's Part XVI scoreboard and the monthly curriculum (book + output per month).
+- Each skill has one manual status: 🔴 not started / 🟡 in progress / ✅ proven, set directly from the list — no separate milestones or research-resources sub-model (both dropped 2026-09-08; nothing in the schema linked "studying a resource" to progress anyway, so dropping resources lost no behavior).
+- Category rollup = count of proven skills ÷ total skills in that category.
 
-### 3.8 Idea parking lot
-Fields: idea, why interesting, date, research later? (yes/no), status (parked / researched / killed / doing). One-tap add from anywhere (floating button). On the 1st of each month, Today shows "Review 7 parked ideas" until done. That is the only time the list is surfaced.
+### 3.8 Idea parking lot — cut 2026-09-08
+Removed entirely (simplification pass — not part of the daily execution loop). Existing ideas were exported to CSV before the table was dropped. Use a notes app for stray ideas until the core loop (priority → habits → schedule → review) is solid enough to justify bringing this back.
 
 ### 3.9 Notifications (web push, iPhone)
 - 6:45 AM: "Set today's ONE thing." (if #1 Priority is empty)
 - 4:00 PM weekdays: "Uncomfortable rep done?" (if habit unchecked) `[DECIDE]`
 - 9:30 PM: "Daily review." (if not submitted)
 - Friday 5:00 PM: "Weekly Review Required."
-- Follow-up reminders from the CRM at 8:00 AM on the due date.
-All times in `America/Denver`; each notification has an on/off toggle in Settings.
+All times in `America/Denver`; each notification has an on/off toggle in Settings. (CRM follow-up reminders at 8:00 AM were cut with the CRM, 2026-09-08 — see §3.6.)
 
 ---
 
@@ -152,26 +146,19 @@ All tables have `id uuid pk`, `user_id uuid references auth.users`, `created_at`
 | Table | Key columns |
 |---|---|
 | `profiles` | timezone (default America/Denver), week_start (mon), score_weights jsonb (unused — Phase 5's habit-only score is a fixed formula, not configurable per profile), north_star text, notification_prefs jsonb |
-| `goals` | level (dream/10yr/3yr/1yr/quarter/month/week/today), parent_id, title, description, target_value, target_unit, current_value, status (active/done/dropped), starts_on, ends_on, sort |
+| `goals` | level (dream/month/week/today — collapsed from 8 levels 2026-09-08), parent_id, title, description, target_value, target_unit, current_value, status (active/done/dropped), starts_on, ends_on, sort |
 | `habits` | name, days_of_week int[] (1–7), sort, active. Streaks are derived from `habit_logs`, not stored — see `/lib/streaks.ts`. |
 | `habit_logs` | habit_id, date, done — unique(habit_id, date) |
 | `daily_entries` | date, priority_text, priority_goal_id, accomplished, learned, tomorrow_priority, submitted_at — unique(user_id, date) |
 | `weekly_reviews` | week_start date, answers jsonb (7 keys), score numeric, breakdown jsonb, biggest_issue text, closed_at, auto_closed bool — unique(user_id, week_start) |
 | `schedule_templates` | weekday int, start_time, end_time, title, category, sort |
 | `schedule_blocks` | date, start_at timestamptz, end_at, title, category, done, source (template/manual/google), google_event_id, google_etag |
-| `contacts` | name, company, industry, role, type, email, phone, linkedin, where_met, expertise, interests, how_i_can_help, last_contact_on, follow_up_on, would_pilot, notes |
-| `interviews` | contact_id, date, notes, current_solution, estimated_cost, pain_score, would_pilot, follow_up |
-| `problems` | title, description, user_role, buyer, frequency, existing_solution, labor_cost, revenue_impact, urgency, wtp, ai_opportunity, competition, tam, expansion, access, score |
-| `interview_problems` | interview_id, problem_id, pain_score, quote — unique(interview_id, problem_id) |
-| `ideas` | title, why_interesting, research_later, status, reviewed_at |
 | `skill_categories` | name, sort, is_side_tree |
-| `skills` | category_id, name, sort |
-| `skill_milestones` | skill_id, title, done, done_at, proof |
-| `skill_resources` | skill_id, kind (book/podcast/doc/course/person/project), title, url, how_to_use |
+| `skills` | category_id, name, sort, status (not_started/in_progress/proven — added 2026-09-08, replacing the milestones/resources sub-model) |
 | `push_subscriptions` | endpoint (unique), p256dh, auth, user_agent |
 | `google_tokens` | refresh_token, access_token, expires_at, calendar_id ("1B" calendar), sync_token |
 
-Views (SQL) used by the app: `problem_aggregates`. Score math lives in `/lib/score.ts` (TypeScript), not SQL, so it's unit-testable — same pattern as `/lib/streaks.ts` for habit streaks.
+`contacts`, `interviews`, `problems`, `interview_problems`, `ideas`, `skill_milestones`, `skill_resources`, and the `problem_aggregates` view were dropped 2026-09-08 (`supabase/migrations/0008_simplify.sql`) along with the CRM, idea parking lot, and skill milestones/resources — see §3.6–3.8 and the change log. Score math lives in `/lib/score.ts` (TypeScript), not SQL, so it's unit-testable — same pattern as `/lib/streaks.ts` for habit streaks.
 
 ---
 
@@ -314,7 +301,19 @@ This is the most fragile phase. Standalone schedule (Phase 3) must be in daily u
 **Done when:** create a block in the app → appears in Google within a minute; move it in Google Calendar on your phone → the app reflects it after Sync now; a class on your primary calendar shows in the day view greyed out.
 **What to understand:** OAuth refresh tokens, and why sync uses `syncToken` instead of re-fetching everything.
 
-### Phase 11 — Hardening
+### Phase 11 — Simplify (built 2026-09-08)
+Steve-Jobs-style product review: the app had grown into a small SaaS product (19 tables, 6 tabs, 10+ screens, a 16-field CRM contact form, a 16-field problem scorecard) when its only job is daily execution. Brayden reviewed each secondary module directly and decided what to cut.
+1. Cut the CRM + problem database entirely (`contacts`, `interviews`, `problems`, `interview_problems`, `problem_aggregates`) — real Q1 contact data was exported to CSV first. Removed the `/crm` tab and routes, `FollowUpsLine` on Today, the CRM follow-up push notification, and CSV export buttons.
+2. Cut the idea parking lot entirely (`ideas` table, `/more/ideas`, the floating add-idea button, `IdeaReviewCard` on Today) — data exported to CSV first.
+3. Simplified the skill tree: dropped `skill_milestones`/`skill_resources`, added a manual `skills.status` (not_started/in_progress/proven) set directly from the flat list. Category bar = proven ÷ total skills.
+4. Collapsed the goal hierarchy from 8 levels to 4 (Dream → Month → Week → Today); reparented existing goals up past the dropped levels before tightening the `goals.level` check constraint. Folded the Goals tab into More.
+5. Bottom nav down to 4 tabs: Today, Schedule, Week, More.
+
+**Done when:** `npm run typecheck`, `npm run lint`, `npm run test`, `npm run build` all pass; nav shows 4 tabs; `/crm` and `/more/ideas` are gone; Today shows only header/priority/schedule/habits/daily-review; Goals reachable from More with the 4-level hierarchy; Skills page shows a flat list with a working status dropdown.
+**Manual test:** confirm on the phone that the 4-tab nav, trimmed Today page, and Skills status dropdown all work; confirm existing habits/schedule/week-review data was untouched by the migration.
+**What to understand:** see §8.
+
+### Phase 12 — Hardening
 1. Offline: service worker caches the app shell so the Today page opens without signal; writes fail visibly (toast) rather than silently. No offline queue in v1.
 2. Loading/error states on every data fetch. Sentry-free: errors go to `console.error` and a `Settings → Debug` page showing the last 20.
 3. Lighthouse PWA + performance pass on the Today page (target: interactive < 2s on Slow 4G).
@@ -325,7 +324,7 @@ This is the most fragile phase. Standalone schedule (Phase 3) must be in daily u
 
 ### Phase 2 features (after v1 is in daily use)
 - **Decision journal + cooling timer:** decision, why, expected result, confidence %, alternatives, review date, actual outcome; amount field applies the doc's rule (<$500 free; $500–2.5k 24h lock; $2.5k–10k 72h + written why; >$10k memo + named person) and shows a countdown before "Committed" can be set. Calibration view: confidence vs. outcome over time.
-- **AI coach:** one route that assembles context (goals, last 4 weeks of scores + reviews, last 10 interviews, problem aggregates, decisions) into a prompt with a system instruction to challenge, not encourage; chat UI on More. Provider key in env. No agents, no tools, no memory beyond the assembled context.
+- **AI coach:** one route that assembles context (goals, last 4 weeks of scores + reviews, decisions) into a prompt with a system instruction to challenge, not encourage; chat UI on More. Provider key in env. No agents, no tools, no memory beyond the assembled context. (Interviews/problem-aggregates context dropped from this description 2026-09-08 along with the CRM — revisit if it comes back.)
 - **Monthly CEO review:** the doc's Company / Skills / Relationships / Money / Life questions, gated on the last day of the month like the weekly review.
 
 ---
@@ -333,11 +332,11 @@ This is the most fragile phase. Standalone schedule (Phase 3) must be in daily u
 ## 7. Open items `[DECIDE]`
 
 1. ~~Auto-close at Monday 00:00 with streak reset — keep, or allow closing through Monday noon?~~ Decided 2026-09-08 (Phase 9): keep, at Monday 00:00 local per user's timezone — `app/api/cron/tick/route.ts`'s `autoCloseStaleWeeks`.
-2. Problem `score /100`: manual, or computed from urgency + WTP + AI opportunity + access?
+2. ~~Problem `score /100`: manual, or computed from urgency + WTP + AI opportunity + access?~~ Moot — the `problems` table was dropped 2026-09-08 (Phase 11 simplification).
 3. ~~4:00 PM "Uncomfortable rep" nudge — keep or drop?~~ Decided 2026-09-08 (Phase 9): keep, shipped as-is.
-4. ~~Quarter progress default: auto from child goals, or manual %?~~ Decided 2026-09-05: auto only, no manual override. `lib/goals.ts`'s `computeProgressPct`.
+4. ~~Quarter progress default: auto from child goals, or manual %?~~ Decided 2026-09-05: auto only, no manual override. `lib/goals.ts`'s `computeProgressPct`. (The "quarter" level itself was later dropped 2026-09-08 — same auto-only rule now applies to the Month level.)
 5. Service worker: hand-written `sw.js` (recommended) or Serwist?
-6. ~~Monthly idea review: gate on Today until done, or just a badge?~~ Decided 2026-09-05: a dismissable card (`components/today/IdeaReviewCard.tsx`), not a full-screen gate — it names the count and opens a one-at-a-time review sheet, but never blocks the rest of Today the way the Friday review gate does.
+6. ~~Monthly idea review: gate on Today until done, or just a badge?~~ Decided 2026-09-05: a dismissable card, not a full-screen gate. Moot — the idea parking lot was cut entirely 2026-09-08 (Phase 11 simplification).
 7. "Confirm email" on sign-up: off (matches Phase 0's original single-user setup) or on (recommended once `/signup` is public, so a bad email address can't hold an account)?
 
 ---
@@ -368,6 +367,8 @@ This is the most fragile phase. Standalone schedule (Phase 3) must be in daily u
 
 **Phase 9 —** `sw.js`'s push handler runs in the service worker's own context, not the page's — it never touches React state, it just calls `self.registration.showNotification()` off whatever JSON `web-push` sent, and `notificationclick` finds-or-opens a client window itself since no page script is listening. The hourly trigger is Supabase pg_cron + pg_net (`supabase/migrations/0006_cron_schedule.sql`), not `vercel.json`'s cron, because Vercel Hobby caps cron jobs at once/day (confirmed live via search, not assumed) — pg_cron's `net.http_post` hits the same `/api/cron/tick` route hourly instead, reading `CRON_SECRET` from Supabase Vault at call time so the value never touches a committed file. `notification_log`'s `unique(user_id, kind, sent_for, ref_id)` is a claim-before-send lock, not an after-the-fact log: the cron route inserts that row *before* calling `web-push`, and a `23505` conflict on the insert is the signal to skip sending — so a retried or overlapping tick can't double-notify, no mutex needed. Because the cron route has no user session, it's the first code in the app to use `lib/supabase/admin.ts`'s service-role client, which means — unlike every RLS-scoped Server Action so far — it has to filter every query by `user_id` itself; its `computeUserWeekScore` duplicates Phase 5's scoring wrapper rather than importing it, specifically because the two need different filtering (RLS vs. explicit `user_id`) — PLAN.md's "no abstraction until the third repetition" rule, applied literally. VAPID's keypair is what lets the push services (Apple's, for iOS Safari) trust that a notification actually came from this server: the private key signs a JWT per-send, so losing it would let someone else push to your users — it was generated once and written straight to `.env.local` without ever being printed to chat or committed.
 
+**Phase 11 (Simplify) —** Cutting a table cleanly means finding every place its *rows* implied behavior elsewhere, not just deleting the `create table` — the CRM cut also had to remove a push-notification kind (`followup_reminder` in `lib/notifications.ts`) and a Today section (`FollowUpsLine`), and the idea cut had to remove its own push-adjacent card (`IdeaReviewCard`) and the floating add button mounted in the app-wide layout; none of those were in the tables themselves. Reparenting goals past a dropped level needed a *loop*, not a single `UPDATE`: `0008_simplify.sql`'s do-block repeatedly points every goal at `parent.parent_id` wherever the parent sits at a dropped level, and `exit when not found` stops once a pass touches zero rows — one pass only fixes one hop, so a goal that was 3 dropped levels deep (e.g. under the old Quarter, itself under 1yr, itself under 3yr) needs 3 passes to reach a surviving ancestor. Postgres names an unnamed column `check` constraint `<table>_<column>_check` by default (`goals_level_check` here) — worth knowing before trying to `alter table ... drop constraint` on one your migration didn't name explicitly. `lib/supabase/types.ts` is a generated file, but this phase hand-edited it to match `0008_simplify.sql` rather than running `supabase gen types` against the live project, because the migration hadn't been applied to Supabase yet when the code needed to typecheck — a reminder that the generated file and the live schema can drift apart on purpose for a short window, and `npm run db:types` needs to be re-run once `0008` is actually pushed.
+
 ---
 
 ## 9. Change log
@@ -389,3 +390,4 @@ This is the most fragile phase. Standalone schedule (Phase 3) must be in daily u
 | 2026-09-05 | Phase 7 built: More → Skills (`components/skills/CategoryList.tsx` — collapsible categories with a `computeProgressPct` bar, skills listed with a derived 🔴/🟡/✅ status) and `/more/skills/[id]` (`MilestoneList`/`MilestoneEditor` — proof required to check a milestone off, Save disabled until it's filled in; `ResourceList`/`ResourceEditor` — kind/title/link/how-to-use). `app/(app)/more/skills/actions.ts` (`upsertMilestone`, `upsertResource`). No migration, no seed changes — `skill_categories`/`skills`/`skill_milestones`/`skill_resources` and all seeded content came from Phase 1. | Claude |
 | 2026-09-05 | Phase 8 built: `components/ideas/AddIdeaButton.tsx` (floating "+" mounted app-wide in `app/(app)/layout.tsx`, 3-field sheet: idea, why interesting, research later?) and More → Ideas (`components/ideas/IdeasList.tsx`, grouped by status with a per-row status select). `app/(app)/more/ideas/actions.ts` (`addIdea`, `updateIdeaStatus`, `reviewIdea`, `getIdeasToReview`). Today gained `IdeaReviewCard` — a dismissable card, not a full gate (resolves §7's `[DECIDE]`), showing a one-at-a-time review sheet for parked ideas created before this calendar month that haven't been reviewed this month; deciding an idea's fate there is the only path that stamps `reviewed_at`, kept as a separate `reviewIdea` action from the Ideas list's plain `updateIdeaStatus` so ordinary status changes never masquerade as a monthly review. `lib/dates.ts` gained `getMonthStartDateString`, unit-tested including a year-boundary case and a non-Denver zone. No migration — `ideas` already existed from Phase 1. | Claude |
 | 2026-09-08 | Phase 9 built: `public/sw.js` gained `push`/`notificationclick` handlers; More → Notifications (`components/more/PushNotificationSettings.tsx` — enable/disable on this device, per-kind toggles, send-test button) and `app/(app)/more/notifications/actions.ts` (`subscribePush`, `unsubscribePush`, `setNotificationPref`). `app/api/cron/tick/route.ts` (hourly: sends due notifications per §3.9, deduped via `notification_log`, auto-closes stale weeks at Monday 00:00 local) and `app/api/push/test/route.ts`. VAPID keys generated via `web-push generate-vapid-keys` and written straight to `.env.local`/Vercel, never shown in chat. `supabase/migrations/0006_cron_schedule.sql` schedules pg_cron + pg_net to hit `/api/cron/tick` hourly — confirmed via search that Vercel Hobby cron caps at once/day, so `vercel.json` couldn't do this directly (§6 Phase 9 step 5's documented fallback); `CRON_SECRET` is read from Supabase Vault at call time (Brayden ran a one-time `vault.create_secret(...)` himself in the SQL Editor — Claude never saw the value). `lib/dates.ts` gained `getLocalHour`, unit-tested. Resolved §7 items 1 and 3 (Monday-00:00 auto-close, 4 PM nudge) — both shipped as originally specced. Some of this phase's groundwork (migration `0005`, `lib/notifications.ts`, `lib/supabase/admin.ts`, `lib/web-push.d.ts`) landed in an earlier same-day commit message `"d"` rather than a proper `phase N` message — noted here since that history won't self-explain later. | Claude + Brayden |
+| 2026-09-08 | Phase 11 (Simplify) built, out of order ahead of Phase 10's remaining sync work, at Brayden's request via a `/plan`-mode product review styled on "what would Steve Jobs cut." Cut CRM + problem database (`contacts`/`interviews`/`problems`/`interview_problems`/`problem_aggregates`, `app/(app)/crm/**`, `components/crm/**`, `FollowUpsLine`, the CRM push-notification kind, `lib/csv.ts`) and the idea parking lot (`ideas`, `app/(app)/more/ideas/**`, `components/ideas/**`, `IdeaReviewCard`) — both exported to CSV first via the app's own (since-removed) export buttons. Simplified the skill tree: dropped `skill_milestones`/`skill_resources` in favor of a manual `skills.status` column, driven from a `<select>` in the flattened `CategoryList.tsx`. Collapsed `goals.level` from 8 values to 4 (dream/month/week/today) — `0008_simplify.sql` reparents any goal whose parent sits at a dropped level up to its nearest surviving ancestor (looped until stable) before tightening the check constraint, so no orphaned rows or manual data surgery was needed. Bottom nav: `components/TabBar.tsx` down to 4 tabs (Goals moved to a More link). `lib/supabase/types.ts` was hand-edited to match the new schema rather than regenerated, since applying `0008` to the live Supabase project happens after this commit (Brayden runs `supabase db push`, then `npm run db:types` to get a real generated file — the hand-edit is a stopgap that matches migration `0008` exactly). Renumbered the old "Phase 11 — Hardening" to Phase 12. | Claude + Brayden |

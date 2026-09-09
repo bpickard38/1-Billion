@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "node --test lib/dates.test.ts lib/streaks.test.ts lib/schedule.test.ts lib/goals.test.ts lib/score.test.ts lib/csv.test.ts lib/notifications.test.ts",
+    "test": "node --test lib/dates.test.ts lib/streaks.test.ts lib/schedule.test.ts lib/goals.test.ts lib/score.test.ts lib/notifications.test.ts",
     "db:types": "supabase gen types typescript --linked > lib/supabase/types.ts"
   },
   "dependencies": {

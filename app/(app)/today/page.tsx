@@ -6,16 +6,12 @@ import HabitList from "@/components/today/HabitList";
 import AddHabitButton from "@/components/today/AddHabitButton";
 import ScheduleSection from "@/components/today/ScheduleSection";
 import DailyReviewSheet from "@/components/today/DailyReviewSheet";
-import FollowUpsLine from "@/components/today/FollowUpsLine";
-import IdeaReviewCard from "@/components/today/IdeaReviewCard";
 import { createClient } from "@/lib/supabase/server";
 import { getLocalDateString, getLocalWeekday, DEFAULT_TIMEZONE } from "@/lib/dates";
 import { computeHabitStreak } from "@/lib/streaks";
 import { getGoalChain, computeProgressPct } from "@/lib/goals";
 import { materializeTodaySchedule } from "./actions";
 import { getCurrentWeekScore } from "@/app/(app)/week/actions";
-import { getFollowUpDueCount } from "@/app/(app)/crm/actions";
-import { getIdeasToReview } from "@/app/(app)/more/ideas/actions";
 
 const STREAK_LOOKBACK_DAYS = 370;
 
@@ -34,11 +30,9 @@ export default async function TodayPage() {
   await materializeTodaySchedule();
 
   const weekScorePromise = getCurrentWeekScore();
-  const followUpCountPromise = getFollowUpDueCount();
-  const ideasToReviewPromise = getIdeasToReview();
 
   const [
-    { data: quarterGoal },
+    { data: monthGoal },
     { data: pickableGoals },
     { data: dailyEntry },
     { data: habits },
@@ -49,7 +43,7 @@ export default async function TodayPage() {
     supabase
       .from("goals")
       .select("id, title")
-      .eq("level", "quarter")
+      .eq("level", "month")
       .order("starts_on", { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -80,26 +74,24 @@ export default async function TodayPage() {
       .order("start_at"),
   ]);
 
-  let quarterProgressPct: number | null = null;
-  if (quarterGoal) {
+  let monthProgressPct: number | null = null;
+  if (monthGoal) {
     const [{ count: total }, { count: done }] = await Promise.all([
       supabase
         .from("goals")
         .select("id", { count: "exact", head: true })
-        .eq("parent_id", quarterGoal.id),
+        .eq("parent_id", monthGoal.id),
       supabase
         .from("goals")
         .select("id", { count: "exact", head: true })
-        .eq("parent_id", quarterGoal.id)
+        .eq("parent_id", monthGoal.id)
         .eq("status", "done"),
     ]);
-    quarterProgressPct = computeProgressPct(done ?? 0, total ?? 0);
+    monthProgressPct = computeProgressPct(done ?? 0, total ?? 0);
   }
 
   const chain = await getGoalChain(supabase, dailyEntry?.priority_goal_id ?? null);
   const weekScore = await weekScorePromise;
-  const followUpCount = await followUpCountPromise;
-  const ideasToReview = await ideasToReviewPromise;
 
   const habitDone: Record<string, boolean> = {};
   for (const log of todayLogs ?? []) habitDone[log.habit_id] = log.done;
@@ -126,8 +118,8 @@ export default async function TodayPage() {
       <div className="flex flex-col gap-4">
         <HeaderStrip
           northStar={profile?.north_star ?? null}
-          quarterGoalTitle={quarterGoal?.title ?? null}
-          quarterProgressPct={quarterProgressPct}
+          monthGoalTitle={monthGoal?.title ?? null}
+          monthProgressPct={monthProgressPct}
           weekScore={weekScore.score}
           weekStreak={weekScore.streak}
         />
@@ -140,9 +132,6 @@ export default async function TodayPage() {
         />
 
         <ScheduleSection blocks={scheduleBlocks ?? []} timeZone={timezone} />
-
-        <FollowUpsLine count={followUpCount} />
-        <IdeaReviewCard ideas={ideasToReview} />
 
         <section className="flex flex-col gap-2">
           <h2 className="text-sm font-semibold text-muted">Habits</h2>

@@ -1,13 +1,13 @@
 export default function HeaderStrip({
   northStar,
-  quarterGoalTitle,
-  quarterProgressPct,
+  monthGoalTitle,
+  monthProgressPct,
   weekScore,
   weekStreak,
 }: {
   northStar: string | null;
-  quarterGoalTitle: string | null;
-  quarterProgressPct: number | null;
+  monthGoalTitle: string | null;
+  monthProgressPct: number | null;
   weekScore: number;
   weekStreak: number;
 }) {
@@ -17,13 +17,13 @@ export default function HeaderStrip({
         {northStar ?? "Set your north star"}
       </p>
 
-      {quarterGoalTitle && (
+      {monthGoalTitle && (
         <div>
-          <p className="text-sm">{quarterGoalTitle}</p>
+          <p className="text-sm">{monthGoalTitle}</p>
           <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-border">
             <div
               className="h-full rounded-full bg-accent"
-              style={{ width: `${quarterProgressPct ?? 0}%` }}
+              style={{ width: `${monthProgressPct ?? 0}%` }}
             />
           </div>
         </div>

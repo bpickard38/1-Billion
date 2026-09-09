@@ -93,17 +93,6 @@ async function itemsForKind(
     }
     case "weekly_review":
       return [{ refId: "", content: notificationContent("weekly_review") }];
-    case "followup_reminder": {
-      const { data: contacts } = await admin
-        .from("contacts")
-        .select("id, name")
-        .eq("user_id", userId)
-        .eq("follow_up_on", todayStr);
-      return (contacts ?? []).map((c) => ({
-        refId: c.id,
-        content: notificationContent("followup_reminder", { contactName: c.name }),
-      }));
-    }
   }
 }
 

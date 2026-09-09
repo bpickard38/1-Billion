@@ -1,25 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./supabase/types";
 
-export const GOAL_LEVELS = [
-  "dream",
-  "10yr",
-  "3yr",
-  "1yr",
-  "quarter",
-  "month",
-  "week",
-  "today",
-] as const;
+export const GOAL_LEVELS = ["dream", "month", "week", "today"] as const;
 
 export type GoalLevel = (typeof GOAL_LEVELS)[number];
 
 export const LEVEL_LABEL: Record<GoalLevel, string> = {
   dream: "Dream",
-  "10yr": "10-year",
-  "3yr": "3-year",
-  "1yr": "1-year",
-  quarter: "Quarter",
   month: "Month",
   week: "Week",
   today: "Today",
@@ -34,11 +21,11 @@ export function parentLevelOf(level: string): GoalLevel | null {
 
 export type ChainLink = { id: string; title: string; level: string };
 
-const MAX_CHAIN_HOPS = 10; // goal levels are 8 deep max; this is just a safety cap
+const MAX_CHAIN_HOPS = 10; // goal levels are 4 deep max; this is just a safety cap
 
 /**
  * Walks `parent_id` up to the Dream, one query per hop. Goal levels are
- * shallow (8 max) so this naive walk is plenty fast — no recursive CTE
+ * shallow (4 max) so this naive walk is plenty fast — no recursive CTE
  * needed at this depth.
  */
 export async function getGoalChain(

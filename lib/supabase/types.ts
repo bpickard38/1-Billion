@@ -39,75 +39,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      contacts: {
-        Row: {
-          company: string | null
-          created_at: string
-          email: string | null
-          expertise: string | null
-          follow_up_on: string | null
-          how_i_can_help: string | null
-          id: string
-          industry: string | null
-          interests: string | null
-          last_contact_on: string | null
-          linkedin: string | null
-          name: string
-          notes: string | null
-          phone: string | null
-          role: string | null
-          type: string | null
-          updated_at: string
-          user_id: string
-          where_met: string | null
-          would_pilot: string | null
-        }
-        Insert: {
-          company?: string | null
-          created_at?: string
-          email?: string | null
-          expertise?: string | null
-          follow_up_on?: string | null
-          how_i_can_help?: string | null
-          id?: string
-          industry?: string | null
-          interests?: string | null
-          last_contact_on?: string | null
-          linkedin?: string | null
-          name: string
-          notes?: string | null
-          phone?: string | null
-          role?: string | null
-          type?: string | null
-          updated_at?: string
-          user_id?: string
-          where_met?: string | null
-          would_pilot?: string | null
-        }
-        Update: {
-          company?: string | null
-          created_at?: string
-          email?: string | null
-          expertise?: string | null
-          follow_up_on?: string | null
-          how_i_can_help?: string | null
-          id?: string
-          industry?: string | null
-          interests?: string | null
-          last_contact_on?: string | null
-          linkedin?: string | null
-          name?: string
-          notes?: string | null
-          phone?: string | null
-          role?: string | null
-          type?: string | null
-          updated_at?: string
-          user_id?: string
-          where_met?: string | null
-          would_pilot?: string | null
-        }
-        Relationships: []
-      }
       daily_entries: {
         Row: {
           accomplished: string | null
@@ -336,150 +267,6 @@ export type Database = {
         }
         Relationships: []
       }
-      ideas: {
-        Row: {
-          created_at: string
-          id: string
-          research_later: boolean
-          reviewed_at: string | null
-          status: string
-          title: string
-          updated_at: string
-          user_id: string
-          why_interesting: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          research_later?: boolean
-          reviewed_at?: string | null
-          status?: string
-          title: string
-          updated_at?: string
-          user_id?: string
-          why_interesting?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          research_later?: boolean
-          reviewed_at?: string | null
-          status?: string
-          title?: string
-          updated_at?: string
-          user_id?: string
-          why_interesting?: string | null
-        }
-        Relationships: []
-      }
-      interview_problems: {
-        Row: {
-          created_at: string
-          id: string
-          interview_id: string
-          pain_score: number | null
-          problem_id: string
-          quote: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          interview_id: string
-          pain_score?: number | null
-          problem_id: string
-          quote?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          interview_id?: string
-          pain_score?: number | null
-          problem_id?: string
-          quote?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "interview_problems_interview_id_fkey"
-            columns: ["interview_id"]
-            isOneToOne: false
-            referencedRelation: "interviews"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "interview_problems_problem_id_fkey"
-            columns: ["problem_id"]
-            isOneToOne: false
-            referencedRelation: "problem_aggregates"
-            referencedColumns: ["problem_id"]
-          },
-          {
-            foreignKeyName: "interview_problems_problem_id_fkey"
-            columns: ["problem_id"]
-            isOneToOne: false
-            referencedRelation: "problems"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      interviews: {
-        Row: {
-          contact_id: string
-          created_at: string
-          current_solution: string | null
-          date: string
-          estimated_cost: number | null
-          follow_up: string | null
-          id: string
-          notes: string | null
-          pain_score: number | null
-          updated_at: string
-          user_id: string
-          would_pilot: string | null
-        }
-        Insert: {
-          contact_id: string
-          created_at?: string
-          current_solution?: string | null
-          date: string
-          estimated_cost?: number | null
-          follow_up?: string | null
-          id?: string
-          notes?: string | null
-          pain_score?: number | null
-          updated_at?: string
-          user_id?: string
-          would_pilot?: string | null
-        }
-        Update: {
-          contact_id?: string
-          created_at?: string
-          current_solution?: string | null
-          date?: string
-          estimated_cost?: number | null
-          follow_up?: string | null
-          id?: string
-          notes?: string | null
-          pain_score?: number | null
-          updated_at?: string
-          user_id?: string
-          would_pilot?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "interviews_contact_id_fkey"
-            columns: ["contact_id"]
-            isOneToOne: false
-            referencedRelation: "contacts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       notification_log: {
         Row: {
           id: string
@@ -504,75 +291,6 @@ export type Database = {
           sent_at?: string
           sent_for?: string
           user_id?: string
-        }
-        Relationships: []
-      }
-      problems: {
-        Row: {
-          access: string | null
-          ai_opportunity: number | null
-          buyer: string | null
-          competition: string | null
-          created_at: string
-          description: string | null
-          existing_solution: string | null
-          expansion: string | null
-          frequency: string | null
-          id: string
-          labor_cost: string | null
-          revenue_impact: string | null
-          score: number | null
-          tam: string | null
-          title: string
-          updated_at: string
-          urgency: number | null
-          user_id: string
-          user_role: string | null
-          wtp: string | null
-        }
-        Insert: {
-          access?: string | null
-          ai_opportunity?: number | null
-          buyer?: string | null
-          competition?: string | null
-          created_at?: string
-          description?: string | null
-          existing_solution?: string | null
-          expansion?: string | null
-          frequency?: string | null
-          id?: string
-          labor_cost?: string | null
-          revenue_impact?: string | null
-          score?: number | null
-          tam?: string | null
-          title: string
-          updated_at?: string
-          urgency?: number | null
-          user_id?: string
-          user_role?: string | null
-          wtp?: string | null
-        }
-        Update: {
-          access?: string | null
-          ai_opportunity?: number | null
-          buyer?: string | null
-          competition?: string | null
-          created_at?: string
-          description?: string | null
-          existing_solution?: string | null
-          expansion?: string | null
-          frequency?: string | null
-          id?: string
-          labor_cost?: string | null
-          revenue_impact?: string | null
-          score?: number | null
-          tam?: string | null
-          title?: string
-          updated_at?: string
-          urgency?: number | null
-          user_id?: string
-          user_role?: string | null
-          wtp?: string | null
         }
         Relationships: []
       }
@@ -759,94 +477,6 @@ export type Database = {
         }
         Relationships: []
       }
-      skill_milestones: {
-        Row: {
-          created_at: string
-          done: boolean
-          done_at: string | null
-          id: string
-          proof: string | null
-          skill_id: string
-          title: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          done?: boolean
-          done_at?: string | null
-          id?: string
-          proof?: string | null
-          skill_id: string
-          title: string
-          updated_at?: string
-          user_id?: string
-        }
-        Update: {
-          created_at?: string
-          done?: boolean
-          done_at?: string | null
-          id?: string
-          proof?: string | null
-          skill_id?: string
-          title?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "skill_milestones_skill_id_fkey"
-            columns: ["skill_id"]
-            isOneToOne: false
-            referencedRelation: "skills"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      skill_resources: {
-        Row: {
-          created_at: string
-          how_to_use: string | null
-          id: string
-          kind: string
-          skill_id: string
-          title: string
-          updated_at: string
-          url: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          how_to_use?: string | null
-          id?: string
-          kind: string
-          skill_id: string
-          title: string
-          updated_at?: string
-          url?: string | null
-          user_id?: string
-        }
-        Update: {
-          created_at?: string
-          how_to_use?: string | null
-          id?: string
-          kind?: string
-          skill_id?: string
-          title?: string
-          updated_at?: string
-          url?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "skill_resources_skill_id_fkey"
-            columns: ["skill_id"]
-            isOneToOne: false
-            referencedRelation: "skills"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       skills: {
         Row: {
           category_id: string
@@ -854,6 +484,7 @@ export type Database = {
           id: string
           name: string
           sort: number
+          status: string
           updated_at: string
           user_id: string
         }
@@ -863,6 +494,7 @@ export type Database = {
           id?: string
           name: string
           sort?: number
+          status?: string
           updated_at?: string
           user_id?: string
         }
@@ -872,6 +504,7 @@ export type Database = {
           id?: string
           name?: string
           sort?: number
+          status?: string
           updated_at?: string
           user_id?: string
         }
@@ -929,18 +562,7 @@ export type Database = {
       }
     }
     Views: {
-      problem_aggregates: {
-        Row: {
-          avg_pain_score: number | null
-          industries: string[] | null
-          pilot_pct: number | null
-          problem_id: string | null
-          times_mentioned: number | null
-          title: string | null
-          user_id: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       [_ in never]: never

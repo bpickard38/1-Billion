@@ -2,14 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sun, CalendarClock, CalendarRange, Target, Users, MoreHorizontal } from "lucide-react";
+import { Sun, CalendarClock, CalendarRange, MoreHorizontal } from "lucide-react";
 
 const tabs = [
   { href: "/today", label: "Today", Icon: Sun },
   { href: "/schedule", label: "Schedule", Icon: CalendarClock },
   { href: "/week", label: "Week", Icon: CalendarRange },
-  { href: "/goals", label: "Goals", Icon: Target },
-  { href: "/crm", label: "CRM", Icon: Users },
   { href: "/more", label: "More", Icon: MoreHorizontal },
 ] as const;
 

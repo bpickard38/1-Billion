@@ -9,7 +9,7 @@ import {
 test("kindsScheduledAtHour: today_priority fires at hour 7 only", () => {
   assert.deepEqual(kindsScheduledAtHour(3, 7), ["today_priority"]);
   assert.deepEqual(kindsScheduledAtHour(3, 6), []);
-  assert.deepEqual(kindsScheduledAtHour(3, 8), ["followup_reminder"]);
+  assert.deepEqual(kindsScheduledAtHour(3, 8), []);
 });
 
 test("kindsScheduledAtHour: uncomfortable_rep only fires at 4 PM on weekdays (1-5)", () => {
@@ -35,18 +35,9 @@ test("kindsScheduledAtHour: an hour with nothing scheduled returns an empty list
   assert.deepEqual(kindsScheduledAtHour(3, 12), []);
 });
 
-test("notificationContent fills in the contact name for followup_reminder when given, and falls back without it", () => {
-  assert.equal(
-    notificationContent("followup_reminder", { contactName: "Ada" }).body,
-    "Follow up with Ada today."
-  );
-  assert.equal(notificationContent("followup_reminder").body, "A CRM follow-up is due today.");
-});
-
 test("notificationContent routes weekly_review to /week/review and everything else to a sensible page", () => {
   assert.equal(notificationContent("weekly_review").url, "/week/review");
   assert.equal(notificationContent("today_priority").url, "/today");
-  assert.equal(notificationContent("followup_reminder").url, "/crm?due=1");
 });
 
 test("isNotificationEnabled defaults to true when prefs are missing or the key is absent", () => {
