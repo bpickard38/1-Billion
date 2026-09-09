@@ -2,12 +2,13 @@ import { NextResponse, type NextRequest } from "next/server";
 import { google } from "googleapis";
 import { createClient } from "@/lib/supabase/server";
 
-// The two-way sync in §3.3/§6 Phase 10 only ever touches the "1B" calendar
-// it creates itself, plus reading the primary calendar for display.
-const SCOPES = [
-  "https://www.googleapis.com/auth/calendar.events",
-  "https://www.googleapis.com/auth/calendar.readonly",
-];
+// One scope, not calendar.events + calendar.readonly split: creating the
+// "1B" calendar (calendars.insert, in the callback) needs the Calendars
+// resource, which only the full `calendar` scope grants — the split scopes
+// cover events but not calendar creation. Confirmed both are the same
+// "sensitive" verification tier, not "restricted", so this doesn't change
+// what publishing requires.
+const SCOPES = ["https://www.googleapis.com/auth/calendar"];
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
