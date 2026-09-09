@@ -6,8 +6,10 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Run on every route except static assets, images and PWA files.
+  // Run on every route except static assets, PWA files, and API routes —
+  // those authenticate themselves (CRON_SECRET, or their own session check)
+  // and must never get redirected to /login instead of returning JSON.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|icons/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|icons/|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
