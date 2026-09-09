@@ -2,9 +2,13 @@ import Link from "next/link";
 import PageTitle from "@/components/PageTitle";
 import CloseUnreviewedWeeksButton from "@/components/more/CloseUnreviewedWeeksButton";
 import ExportCsvButtons from "@/components/more/ExportCsvButtons";
+import PushNotificationSettings from "@/components/more/PushNotificationSettings";
 import { logout } from "@/app/login/actions";
+import { getNotificationPrefs } from "@/app/(app)/more/notifications/actions";
 
-export default function MorePage() {
+export default async function MorePage() {
+  const notificationPrefs = await getNotificationPrefs();
+
   return (
     <>
       <PageTitle>More</PageTitle>
@@ -24,9 +28,14 @@ export default function MorePage() {
       </nav>
 
       <p className="mb-2 mt-6 text-xs uppercase tracking-wide text-muted">Settings</p>
-      <div className="mb-8 flex flex-col gap-2">
+      <div className="mb-6 flex flex-col gap-2">
         <CloseUnreviewedWeeksButton />
         <ExportCsvButtons />
+      </div>
+
+      <p className="mb-2 text-xs uppercase tracking-wide text-muted">Notifications</p>
+      <div className="mb-8">
+        <PushNotificationSettings initialPrefs={notificationPrefs} />
       </div>
 
       <form action={logout}>

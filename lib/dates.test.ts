@@ -6,6 +6,7 @@ import {
   getWeekEnd,
   getWeekStartDateString,
   getLocalWeekday,
+  getLocalHour,
   localTimeToInstant,
   instantToLocalTimeString,
   localMinutesSinceMidnight,
@@ -67,6 +68,12 @@ test("getLocalWeekday: 1 = Monday ... 7 = Sunday (2026-09-04 is a Friday)", () =
   assert.equal(getLocalWeekday(new Date("2026-08-31T20:00:00Z"), DENVER), 1);
   assert.equal(getLocalWeekday(new Date("2026-09-04T20:00:00Z"), DENVER), 5);
   assert.equal(getLocalWeekday(new Date("2026-09-06T20:00:00Z"), DENVER), 7);
+});
+
+test("getLocalHour matches the Denver wall-clock hour and wraps across local midnight (MDT, UTC-6)", () => {
+  assert.equal(getLocalHour(new Date("2026-09-05T12:30:00.000Z"), DENVER), 6);
+  assert.equal(getLocalHour(new Date("2026-09-05T06:00:00.000Z"), DENVER), 0);
+  assert.equal(getLocalHour(new Date("2026-09-05T05:59:00.000Z"), DENVER), 23);
 });
 
 test("localTimeToInstant converts a Denver wall-clock time to UTC (MDT, UTC-6)", () => {

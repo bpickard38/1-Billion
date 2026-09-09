@@ -52,6 +52,14 @@ export function getLocalWeekday(
   return getISODay(toZonedTime(instant, timeZone));
 }
 
+/** The local hour (0-23) of `instant` in `timeZone` — the cron tick's hour bucket. */
+export function getLocalHour(
+  instant: Date,
+  timeZone: string = DEFAULT_TIMEZONE
+): number {
+  return toZonedTime(instant, timeZone).getHours();
+}
+
 /**
  * UTC instant for local wall-clock `dateString` ("yyyy-MM-dd") + `timeString`
  * ("HH:mm" or "HH:mm:ss", as Postgres `time` columns come back) in `timeZone`.
