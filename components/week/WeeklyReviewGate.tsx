@@ -49,6 +49,7 @@ export default function WeeklyReviewGate({
       const shouldShow =
         !isClosed &&
         pathname !== "/week/review" &&
+        pathname !== "/schedule/plan" &&
         isAfterWeeklyReviewCutoff(new Date(), timeZone) &&
         !isDismissed(weekStart);
       if (overlayRef.current) overlayRef.current.hidden = !shouldShow;

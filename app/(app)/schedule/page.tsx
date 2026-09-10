@@ -1,4 +1,5 @@
 import { format, parseISO } from "date-fns";
+import Link from "next/link";
 import PageTitle from "@/components/PageTitle";
 import DayCalendar from "@/components/schedule/DayCalendar";
 import { createClient } from "@/lib/supabase/server";
@@ -37,6 +38,7 @@ export default async function SchedulePage() {
   return (
     <>
       <PageTitle>{format(parseISO(today), "EEEE, MMM d")}</PageTitle>
+      <div className="mb-4 flex gap-2"><Link href="/schedule/plan" className="flex-1 rounded-lg bg-accent px-4 py-3 text-center text-sm font-semibold text-bg">Plan my day</Link><Link href="/schedule/plan?days=7" className="rounded-lg border border-border px-4 py-3 text-sm">Plan 7 days</Link></div>
       <DayCalendar blocks={blocks ?? []} timeZone={timeZone} />
     </>
   );

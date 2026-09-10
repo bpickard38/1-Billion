@@ -28,6 +28,7 @@ export default async function MorePage({
     <>
       <PageTitle>Settings</PageTitle>
       <nav className="mb-6 flex flex-col gap-2">
+        <Link href="/more/canvas" className="rounded-lg border border-border px-3 py-2 text-sm">Canvas assignments</Link>
         <Link href="/goals" className="rounded-lg border border-border px-3 py-2 text-sm">
           Goals
         </Link>

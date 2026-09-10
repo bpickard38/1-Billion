@@ -117,6 +117,7 @@ export default async function TodayPage() {
   return (
     <>
       <PageTitle>Today</PageTitle>
+      <Link href="/schedule" className="mb-4 block rounded-lg bg-accent px-4 py-3 text-center text-sm font-semibold text-bg">Daily Schedule</Link>
 
       <div className="flex flex-col gap-4">
         <HeaderStrip

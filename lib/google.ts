@@ -478,7 +478,8 @@ export async function syncGoogleCalendarForUser(
   supabase: Client,
   userId: string,
   tokenRow: GoogleTokenRow,
-  timeZone: string = DEFAULT_TIMEZONE
+  timeZone: string = DEFAULT_TIMEZONE,
+  strict = false
 ): Promise<void> {
   let primarySyncToken = tokenRow.primary_sync_token;
   let error: string | null = null;
@@ -503,4 +504,32 @@ export async function syncGoogleCalendarForUser(
       last_sync_error: error,
     })
     .eq("user_id", userId);
+  if (strict && error) throw new Error("Could not refresh Google Calendar. Reconnect or sync it in Settings before planning.");
+}
+
+// Stable Google IDs make a planner retry safe even if an earlier response was lost.
+export async function syncPlannedBlocks(supabase: Client, blocks: { id: string; title: string; start_at: string; end_at: string; category: string; google_event_id: string | null }[], remove = false) {
+  const { data: tokens, error } = await supabase.from("google_tokens").select("*").maybeSingle();
+  if (error) throw new Error("Could not check your calendar connection.");
+  if (!tokens?.calendar_id) return { connected: false, failed: 0 };
+  let failed = 0;
+  for (const block of blocks) {
+    const eventId = block.google_event_id ?? `b1${block.id.replaceAll("-", "")}`;
+    try {
+      const { refreshedTokens } = await withGoogleCalendar(tokens, async calendar => {
+        if (remove) { await pushBlockDelete(calendar, tokens.calendar_id!, eventId); return; }
+        if (block.google_event_id) return; // A retry must preserve any later Google-side edit.
+        try { await calendar.events.insert({ calendarId: tokens.calendar_id!, requestBody: { ...eventBody(block), id: eventId } }); }
+        catch (err) { if ((err as { code?: number }).code !== 409) throw err; }
+        const { error: saveError } = await supabase.from("schedule_blocks").update({ google_event_id: eventId }).eq("id",block.id);
+        if (saveError) throw new Error("Could not record calendar sync.");
+      });
+      if (refreshedTokens) {
+        Object.assign(tokens, refreshedTokens);
+        const { error: tokenError } = await supabase.from("google_tokens").update(refreshedTokens).eq("id",tokens.id);
+        if (tokenError) throw new Error("Could not refresh calendar connection.");
+      }
+    } catch { failed++; }
+  }
+  return { connected: true, failed };
 }

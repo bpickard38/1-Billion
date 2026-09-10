@@ -1,4 +1,5 @@
 import { addDays, parseISO, format } from "date-fns";
+import Link from "next/link";
 import PageTitle from "@/components/PageTitle";
 import ReviewForm from "@/components/week/ReviewForm";
 import { createClient } from "@/lib/supabase/server";
@@ -34,6 +35,7 @@ export default async function WeekReviewPage() {
     return (
       <>
         <PageTitle>{rangeLabel} — closed</PageTitle>
+        <Link href="/schedule/plan?days=7" className="mb-4 block rounded-lg border border-accent px-4 py-3 text-center text-accent">Plan assignments for the next 7 days</Link>
         <p className="mb-4 text-sm text-muted">
           Score {review.score}%{review.auto_closed ? " (auto-closed)" : ""}
           {review.biggest_issue && ` — biggest issue: ${review.biggest_issue}`}
@@ -55,6 +57,7 @@ export default async function WeekReviewPage() {
   return (
     <>
       <PageTitle>Weekly review — {rangeLabel}</PageTitle>
+      <Link href="/schedule/plan?days=7" className="mb-4 block rounded-lg border border-accent px-4 py-3 text-center text-accent">Plan assignments for the next 7 days</Link>
       <ReviewForm weekStart={weekStart} initialAnswers={{ ...EMPTY_ANSWERS, ...answers }} />
     </>
   );

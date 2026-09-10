@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "node --test lib/dates.test.ts lib/streaks.test.ts lib/schedule.test.ts lib/goals.test.ts lib/score.test.ts lib/notifications.test.ts",
+    "test": "node --test lib/dates.test.ts lib/streaks.test.ts lib/schedule.test.ts lib/goals.test.ts lib/score.test.ts lib/notifications.test.ts lib/planner.test.ts lib/canvas-client.test.ts lib/planning-database.test.ts",
     "db:types": "supabase gen types typescript --linked > lib/supabase/types.ts"
   },
   "dependencies": {
@@ -25,6 +25,7 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
