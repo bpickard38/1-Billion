@@ -10,6 +10,7 @@ import ScheduleSection from "@/components/today/ScheduleSection";
 import DailyReviewSheet from "@/components/today/DailyReviewSheet";
 import WeekStreakCard from "@/components/today/WeekStreakCard";
 import { createClient } from "@/lib/supabase/server";
+import { getProfile } from "@/lib/supabase/profile";
 import { getLocalDateString, getLocalWeekday, DEFAULT_TIMEZONE } from "@/lib/dates";
 import { computeHabitStreak } from "@/lib/streaks";
 import { getGoalChain, computeProgressPct } from "@/lib/goals";
@@ -21,10 +22,7 @@ const STREAK_LOOKBACK_DAYS = 370;
 export default async function TodayPage() {
   const supabase = await createClient();
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("timezone, north_star")
-    .maybeSingle();
+  const profile = await getProfile();
   const timezone = profile?.timezone ?? DEFAULT_TIMEZONE;
   const today = getLocalDateString(new Date(), timezone);
   const weekday = getLocalWeekday(new Date(), timezone);

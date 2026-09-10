@@ -1,21 +1,16 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import TabBar from "@/components/TabBar";
 import WeeklyReviewGate from "@/components/week/WeeklyReviewGate";
 import { DEFAULT_TIMEZONE } from "@/lib/dates";
+import { getProfile } from "@/lib/supabase/profile";
 import { getCurrentWeekScore } from "@/app/(app)/week/actions";
 
-// Every screen inside (app) requires a logged-in user.
-// proxy.ts already redirects; this is the belt to that suspender.
+// Every screen inside (app) requires a logged-in user. proxy.ts enforces
+// this on every request (redirects to /login before this layout ever
+// runs) — checking again here would be a second network round trip to
+// Supabase Auth on every navigation for no added protection.
 export default async function AppLayout({ children }: LayoutProps<"/">) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const [{ data: profile }, weekScore] = await Promise.all([
-    supabase.from("profiles").select("timezone").maybeSingle(),
+  const [profile, weekScore] = await Promise.all([
+    getProfile(),
     getCurrentWeekScore(),
   ]);
 

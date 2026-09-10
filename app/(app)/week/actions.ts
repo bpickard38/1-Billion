@@ -1,16 +1,18 @@
 "use server";
 
+import { cache } from "react";
 import { refresh } from "next/cache";
 import { addDays, parseISO, format } from "date-fns";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { getProfile } from "@/lib/supabase/profile";
 import { getWeekStartDateString, getWeekEnd, getLocalDateString, DEFAULT_TIMEZONE } from "@/lib/dates";
 import { computeWeekScore, computeReviewStreak, labelForScore, type ScoreBreakdownRow } from "@/lib/score";
 import type { Database, Json } from "@/lib/supabase/types";
 
-async function getTimezone(supabase: SupabaseClient<Database>) {
-  const { data } = await supabase.from("profiles").select("timezone").maybeSingle();
-  return data?.timezone ?? DEFAULT_TIMEZONE;
+async function getTimezone() {
+  const profile = await getProfile();
+  return profile?.timezone ?? DEFAULT_TIMEZONE;
 }
 
 function weekEndString(weekStart: string): string {
@@ -50,9 +52,11 @@ export type CurrentWeekScore = {
 
 // Single source of truth for "what is this week's score/streak right now" —
 // used by both the Week tab and Today's header, so they never disagree.
-export async function getCurrentWeekScore(): Promise<CurrentWeekScore> {
+// cache()-wrapped so the layout and the page calling this within the same
+// request share one set of queries instead of running them twice.
+const getCurrentWeekScoreCached = cache(async (): Promise<CurrentWeekScore> => {
   const supabase = await createClient();
-  const timeZone = await getTimezone(supabase);
+  const timeZone = await getTimezone();
   const now = new Date();
   const weekStart = getWeekStartDateString(now, timeZone);
   const weekEnd = getLocalDateString(getWeekEnd(now, timeZone), timeZone);
@@ -80,6 +84,10 @@ export async function getCurrentWeekScore(): Promise<CurrentWeekScore> {
 
   const { score, label, breakdown, biggestIssue } = await computeLiveWeekScore(supabase, weekStart, weekEnd);
   return { weekStart, score, label, breakdown, biggestIssue, streak, closed: false };
+});
+
+export async function getCurrentWeekScore(): Promise<CurrentWeekScore> {
+  return getCurrentWeekScoreCached();
 }
 
 export type ReviewAnswers = {
@@ -175,7 +183,7 @@ export async function submitReview(weekStart: string, answers: ReviewAnswers) {
 // review yet, scoring it from that week's habit_logs, with auto_closed = true.
 export async function closeUnreviewedWeeks() {
   const supabase = await createClient();
-  const timeZone = await getTimezone(supabase);
+  const timeZone = await getTimezone();
   const currentWeekStart = getWeekStartDateString(new Date(), timeZone);
 
   const { data: reviewedWeeks } = await supabase
