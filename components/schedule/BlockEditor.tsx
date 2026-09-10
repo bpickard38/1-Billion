@@ -71,7 +71,10 @@ export default function BlockEditor({
         endTime,
         title: title.trim(),
         category,
-        repeatDays: repeatDays.length > 0 ? repeatDays : undefined,
+        // Sending [] (not undefined) when a series' picker was cleared is
+        // what tells the action "take this out of its series" rather than
+        // "the picker was never touched" — see ScheduleBlockInput's comment.
+        repeatDays: repeatDays.length > 0 ? repeatDays : isPartOfSeries ? [] : undefined,
         editScope: scope,
       });
       onClose();

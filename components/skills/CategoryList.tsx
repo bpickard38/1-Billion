@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
-import { updateSkillStatus, type SkillStatus } from "@/app/(app)/more/skills/actions";
+import Link from "next/link";
+import { ChevronDown, ChevronRight, Timer } from "lucide-react";
+import { updateSkillStatus, type SkillStatus } from "@/app/(app)/skills/actions";
 
 type Category = { id: string; name: string; sort: number; is_side_tree: boolean };
 type Skill = { id: string; category_id: string; name: string; sort: number; status: SkillStatus };
@@ -79,7 +80,13 @@ export default function CategoryList({
                     key={skill.id}
                     className="flex items-center justify-between gap-2 rounded px-2 py-2 text-sm"
                   >
-                    <span>{skill.name}</span>
+                    <Link
+                      href={`/skills/${skill.id}/focus`}
+                      className="flex flex-1 items-center gap-1.5 text-fg"
+                    >
+                      <Timer size={14} className="shrink-0 text-muted" />
+                      {skill.name}
+                    </Link>
                     <select
                       value={skill.status}
                       disabled={isPending}

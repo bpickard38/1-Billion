@@ -1,4 +1,6 @@
 import { parseISO, subDays, format } from "date-fns";
+import Link from "next/link";
+import { GraduationCap } from "lucide-react";
 import PageTitle from "@/components/PageTitle";
 import HeaderStrip from "@/components/today/HeaderStrip";
 import PriorityCard from "@/components/today/PriorityCard";
@@ -6,6 +8,7 @@ import HabitList from "@/components/today/HabitList";
 import AddHabitButton from "@/components/today/AddHabitButton";
 import ScheduleSection from "@/components/today/ScheduleSection";
 import DailyReviewSheet from "@/components/today/DailyReviewSheet";
+import WeekStreakCard from "@/components/today/WeekStreakCard";
 import { createClient } from "@/lib/supabase/server";
 import { getLocalDateString, getLocalWeekday, DEFAULT_TIMEZONE } from "@/lib/dates";
 import { computeHabitStreak } from "@/lib/streaks";
@@ -120,8 +123,6 @@ export default async function TodayPage() {
           northStar={profile?.north_star ?? null}
           monthGoalTitle={monthGoal?.title ?? null}
           monthProgressPct={monthProgressPct}
-          weekScore={weekScore.score}
-          weekStreak={weekScore.streak}
         />
 
         <PriorityCard
@@ -139,7 +140,22 @@ export default async function TodayPage() {
           <AddHabitButton />
         </section>
 
+        <Link
+          href="/skills"
+          className="flex items-center justify-center gap-2 rounded-lg border border-accent/60 px-3 py-2 text-sm font-medium text-accent"
+        >
+          <GraduationCap size={16} />
+          Study a skill
+        </Link>
+
         <DailyReviewSheet alreadySubmitted={Boolean(dailyEntry?.submitted_at)} />
+
+        <WeekStreakCard
+          score={weekScore.score}
+          label={weekScore.label}
+          streak={weekScore.streak}
+          breakdown={weekScore.breakdown}
+        />
       </div>
     </>
   );

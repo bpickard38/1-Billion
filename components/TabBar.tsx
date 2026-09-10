@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sun, CalendarClock, CalendarRange, MoreHorizontal } from "lucide-react";
+import { Sun, CalendarClock, GraduationCap, Settings } from "lucide-react";
 
 const tabs = [
   { href: "/today", label: "Today", Icon: Sun },
   { href: "/schedule", label: "Schedule", Icon: CalendarClock },
-  { href: "/week", label: "Week", Icon: CalendarRange },
-  { href: "/more", label: "More", Icon: MoreHorizontal },
+  { href: "/skills", label: "Skills", Icon: GraduationCap },
+  { href: "/more", label: "Settings", Icon: Settings },
 ] as const;
 
 export default function TabBar() {

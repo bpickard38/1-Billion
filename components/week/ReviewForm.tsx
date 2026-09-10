@@ -52,7 +52,9 @@ export default function ReviewForm({
   function submit() {
     startTransition(async () => {
       await submitReview(weekStart, answers);
-      router.push("/week");
+      // The Week tab is gone (nav rework) — Today is where the streak/score
+      // now lives (WeekStreakCard), so that's the natural landing spot.
+      router.push("/today");
     });
   }
 

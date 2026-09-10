@@ -21,7 +21,6 @@ type Block = {
   end_at: string;
   title: string;
   category: string;
-  source: string;
   google_recurring_event_id: string | null;
   recurrence_days: number[] | null;
 };
@@ -284,34 +283,6 @@ export default function DayCalendar({ blocks, timeZone }: { blocks: Block[]; tim
         ))}
 
         {positioned.map(({ block, top, height, durationMin }) => {
-          // Primary-calendar imports are read-only (Phase 10 §6 step 5) —
-          // no tap-to-edit and no dragging, rendered greyed so it reads as
-          // "not yours to move."
-          if (block.source === "google_primary") {
-            const compact = height < COMPACT_HEIGHT;
-            return (
-              <div
-                key={block.id}
-                className="absolute left-12 right-1 overflow-hidden rounded border border-dashed border-muted/50 bg-muted/10 px-2 py-0.5 text-left text-xs opacity-70"
-                style={{ top: `${top}px`, height: `${height}px` }}
-              >
-                {compact ? (
-                  <span className="block truncate text-muted">
-                    {instantToLocalTimeString(block.start_at, timeZone)} {block.title}
-                  </span>
-                ) : (
-                  <>
-                    <span className="block truncate font-medium text-muted">{block.title}</span>
-                    <span className="block truncate text-muted">
-                      {instantToLocalTimeString(block.start_at, timeZone)}–
-                      {instantToLocalTimeString(block.end_at, timeZone)}
-                    </span>
-                  </>
-                )}
-              </div>
-            );
-          }
-
           const isDragging = drag?.blockId === block.id;
           const renderTop = isDragging ? drag.offsetTop : top;
           const compact = height < COMPACT_HEIGHT;

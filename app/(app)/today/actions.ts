@@ -80,6 +80,34 @@ export async function addHabit(name: string) {
   refresh();
 }
 
+export type HabitUpdateInput = {
+  name: string;
+  daysOfWeek: number[];
+  active: boolean;
+};
+
+export async function updateHabit(habitId: string, input: HabitUpdateInput) {
+  const trimmed = input.name.trim();
+  if (!trimmed || input.daysOfWeek.length === 0) return;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("habits")
+    .update({ name: trimmed, days_of_week: input.daysOfWeek, active: input.active })
+    .eq("id", habitId);
+  if (error) throw new Error(error.message);
+
+  refresh();
+}
+
+export async function deleteHabit(habitId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("habits").delete().eq("id", habitId);
+  if (error) throw new Error(error.message);
+
+  refresh();
+}
+
 export type DailyReviewInput = {
   accomplished: string;
   learned: string;
@@ -172,8 +200,12 @@ export type ScheduleBlockInput = {
   endTime: string;
   title: string;
   category: string;
-  // ISO weekdays (1=Mon..7=Sun) this block repeats on — undefined/empty
-  // means no repeat. Only meaningful via the Repeat picker in BlockEditor.
+  // ISO weekdays (1=Mon..7=Sun) this block repeats on. `undefined` means
+  // "don't touch series membership" (a drag, or a plain edit that never
+  // opened the Repeat picker) — a non-empty array creates/replaces the
+  // series; an explicit empty array means the Repeat picker was cleared,
+  // i.e. "take this out of its series." Undefined and [] must stay distinct
+  // (see below) or a drag on a series instance deletes the whole series.
   repeatDays?: number[];
   // Required (defaults to "this") when editing a block that's already part
   // of a series without changing which days it repeats on.
@@ -197,18 +229,20 @@ export async function upsertScheduleBlock(input: ScheduleBlockInput) {
   const date = await todayString(supabase);
   const startAt = localTimeToInstant(date, input.startTime, timeZone).toISOString();
   const endAt = localTimeToInstant(date, input.endTime, timeZone).toISOString();
-  const repeatDays = input.repeatDays && input.repeatDays.length > 0 ? input.repeatDays : null;
+  // See the ScheduleBlockInput comment: undefined vs [] must stay distinct.
+  const repeatDaysTouched = input.repeatDays !== undefined;
+  const repeatDays = repeatDaysTouched && input.repeatDays!.length > 0 ? input.repeatDays! : null;
+  const repeatExplicitlyCleared = repeatDaysTouched && input.repeatDays!.length === 0;
 
   let existing: {
     google_event_id: string | null;
-    source: string;
     google_recurring_event_id: string | null;
     recurrence_days: number[] | null;
   } | null = null;
   if (input.id) {
     const { data } = await supabase
       .from("schedule_blocks")
-      .select("google_event_id, source, google_recurring_event_id, recurrence_days")
+      .select("google_event_id, google_recurring_event_id, recurrence_days")
       .eq("id", input.id)
       .maybeSingle();
     existing = data;
@@ -235,9 +269,11 @@ export async function upsertScheduleBlock(input: ScheduleBlockInput) {
     return;
   }
 
-  // Repeat was turned off on a block that's part of a series: drop the
-  // series, then fall through to create a fresh plain single block below.
-  if (!repeatDays && existing?.google_recurring_event_id) {
+  // Repeat was explicitly turned off (Repeat picker cleared) on a block
+  // that's part of a series: drop the series, then fall through to create a
+  // fresh plain single block below. A drag or an untouched-picker edit
+  // (repeatDaysTouched === false) must NOT hit this — see the type comment.
+  if (repeatExplicitlyCleared && existing?.google_recurring_event_id) {
     await deleteRecurringSeries(supabase, user.id, existing.google_recurring_event_id);
     existing = null;
   }
@@ -284,19 +320,18 @@ export async function upsertScheduleBlock(input: ScheduleBlockInput) {
     blockId = inserted.id;
   }
 
-  // Push direction: read-only primary-calendar imports never reach here
-  // since the day view doesn't open an editor for them — this check is
-  // just a defensive backstop.
-  if (existing?.source !== "google_primary") {
-    await syncBlockToGoogle(supabase, {
-      id: blockId!,
-      title: input.title,
-      start_at: startAt,
-      end_at: endAt,
-      category: input.category,
-      google_event_id: existing?.google_event_id ?? null,
-    });
-  }
+  // Push direction: every block syncs back to Google now, including
+  // personal (non-app-created) primary-calendar events — editing one here
+  // is a real edit to the real event, same as dragging it in Google
+  // Calendar itself.
+  await syncBlockToGoogle(supabase, {
+    id: blockId!,
+    title: input.title,
+    start_at: startAt,
+    end_at: endAt,
+    category: input.category,
+    google_event_id: existing?.google_event_id ?? null,
+  });
 
   refresh();
 }
@@ -310,7 +345,7 @@ export async function deleteScheduleBlock(blockId: string, editScope?: "this" | 
 
   const { data: existing } = await supabase
     .from("schedule_blocks")
-    .select("google_event_id, source, google_recurring_event_id")
+    .select("google_event_id, google_recurring_event_id")
     .eq("id", blockId)
     .maybeSingle();
 
@@ -323,9 +358,7 @@ export async function deleteScheduleBlock(blockId: string, editScope?: "this" | 
   const { error } = await supabase.from("schedule_blocks").delete().eq("id", blockId);
   if (error) throw new Error(error.message);
 
-  if (existing?.source !== "google_primary") {
-    await deleteBlockFromGoogle(supabase, existing?.google_event_id ?? null);
-  }
+  await deleteBlockFromGoogle(supabase, existing?.google_event_id ?? null);
 
   refresh();
 }

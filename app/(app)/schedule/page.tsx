@@ -19,9 +19,8 @@ export default async function SchedulePage() {
   await materializeTodaySchedule();
 
   // Pull direction (Phase 10): anchored to the Schedule tab rather than
-  // Today, since the day view (and its read-only primary-calendar overlay)
-  // lives here, not on Today — which stays check-off-only per §3.2's
-  // under-2s load budget.
+  // Today, since the day view lives here, not on Today — which stays
+  // check-off-only per §3.2's under-2s load budget.
   if (user) {
     const { data: tokenRow } = await supabase.from("google_tokens").select("*").maybeSingle();
     if (tokenRow) {
@@ -31,7 +30,7 @@ export default async function SchedulePage() {
 
   const { data: blocks } = await supabase
     .from("schedule_blocks")
-    .select("id, start_at, end_at, title, category, source, google_recurring_event_id, recurrence_days")
+    .select("id, start_at, end_at, title, category, google_recurring_event_id, recurrence_days")
     .eq("date", today)
     .order("start_at");
 
