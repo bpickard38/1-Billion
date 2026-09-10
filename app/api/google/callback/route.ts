@@ -51,25 +51,16 @@ export async function GET(request: NextRequest) {
     return fail("Google didn't return a long-lived token — try disconnecting Google's access for this app at myaccount.google.com and reconnecting.");
   }
 
-  const { data: existing } = await supabase.from("google_tokens").select("calendar_id").maybeSingle();
-
-  let calendarId = existing?.calendar_id ?? null;
-  if (!calendarId) {
-    try {
-      const calendarApi = google.calendar({ version: "v3", auth: oauth2Client });
-      const { data: created } = await calendarApi.calendars.insert({ requestBody: { summary: "1B" } });
-      calendarId = created.id ?? null;
-    } catch {
-      return fail("Connected, but couldn't create the \"1B\" calendar. Try again.");
-    }
-  }
-
+  // Writes/reads happen directly on the user's primary calendar — "primary"
+  // is Google's reserved alias for it, not a real calendar id. Ownership of
+  // an event on it is decided later by an extendedProperties marker (see
+  // lib/google.ts), not by which calendar it's on.
   const { error } = await supabase.from("google_tokens").upsert(
     {
       refresh_token: refreshToken,
       access_token: accessToken,
       expires_at: expiryDate ? new Date(expiryDate).toISOString() : null,
-      calendar_id: calendarId,
+      calendar_id: "primary",
     },
     { onConflict: "user_id" }
   );

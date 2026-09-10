@@ -31,7 +31,7 @@ export default async function SchedulePage() {
 
   const { data: blocks } = await supabase
     .from("schedule_blocks")
-    .select("id, start_at, end_at, title, category, source")
+    .select("id, start_at, end_at, title, category, source, google_recurring_event_id, recurrence_days")
     .eq("date", today)
     .order("start_at");
 

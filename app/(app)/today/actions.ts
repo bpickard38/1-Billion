@@ -11,7 +11,13 @@ import {
   DEFAULT_TIMEZONE,
 } from "@/lib/dates";
 import { materializeBlocks } from "@/lib/schedule";
-import { syncBlockToGoogle, deleteBlockFromGoogle } from "@/lib/google";
+import {
+  syncBlockToGoogle,
+  deleteBlockFromGoogle,
+  createRecurringSeries,
+  deleteRecurringSeries,
+  updateSeriesAll,
+} from "@/lib/google";
 import type { Database } from "@/lib/supabase/types";
 
 async function getTimezone(supabase: SupabaseClient<Database>) {
@@ -166,28 +172,96 @@ export type ScheduleBlockInput = {
   endTime: string;
   title: string;
   category: string;
+  // ISO weekdays (1=Mon..7=Sun) this block repeats on — undefined/empty
+  // means no repeat. Only meaningful via the Repeat picker in BlockEditor.
+  repeatDays?: number[];
+  // Required (defaults to "this") when editing a block that's already part
+  // of a series without changing which days it repeats on.
+  editScope?: "this" | "all";
 };
+
+function sameDaySet(a: readonly number[] | null | undefined, b: readonly number[] | null | undefined): boolean {
+  const sortedA = [...(a ?? [])].sort((x, y) => x - y);
+  const sortedB = [...(b ?? [])].sort((x, y) => x - y);
+  return JSON.stringify(sortedA) === JSON.stringify(sortedB);
+}
 
 export async function upsertScheduleBlock(input: ScheduleBlockInput) {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
   const timeZone = await getTimezone(supabase);
   const date = await todayString(supabase);
   const startAt = localTimeToInstant(date, input.startTime, timeZone).toISOString();
   const endAt = localTimeToInstant(date, input.endTime, timeZone).toISOString();
+  const repeatDays = input.repeatDays && input.repeatDays.length > 0 ? input.repeatDays : null;
+
+  let existing: {
+    google_event_id: string | null;
+    source: string;
+    google_recurring_event_id: string | null;
+    recurrence_days: number[] | null;
+  } | null = null;
+  if (input.id) {
+    const { data } = await supabase
+      .from("schedule_blocks")
+      .select("google_event_id, source, google_recurring_event_id, recurrence_days")
+      .eq("id", input.id)
+      .maybeSingle();
+    existing = data;
+  }
+
+  // Turning repeat on for a new block, upgrading a plain block into a
+  // series, or changing which days an existing series repeats on: always
+  // (re)creates the series from scratch rather than reconciling a partial
+  // RRULE edit — simpler, and matches how rarely this actually happens.
+  const daysChanged = repeatDays !== null && !sameDaySet(repeatDays, existing?.recurrence_days);
+  if (repeatDays && (!existing?.google_recurring_event_id || daysChanged)) {
+    if (existing?.google_recurring_event_id) {
+      await deleteRecurringSeries(supabase, user.id, existing.google_recurring_event_id);
+    } else if (input.id) {
+      await deleteScheduleBlock(input.id);
+    }
+    await createRecurringSeries(
+      supabase,
+      user.id,
+      { title: input.title, category: input.category, startTime: input.startTime, endTime: input.endTime, days: repeatDays },
+      timeZone
+    );
+    refresh();
+    return;
+  }
+
+  // Repeat was turned off on a block that's part of a series: drop the
+  // series, then fall through to create a fresh plain single block below.
+  if (!repeatDays && existing?.google_recurring_event_id) {
+    await deleteRecurringSeries(supabase, user.id, existing.google_recurring_event_id);
+    existing = null;
+  }
+
+  // Editing an existing series without touching the day picker: "this
+  // event" falls through to the single-row path below (Google detaches it
+  // into an exception automatically when pushed by its own instance id);
+  // "all events" patches the master and every local row, then returns.
+  if (existing?.google_recurring_event_id) {
+    if ((input.editScope ?? "this") === "all") {
+      await updateSeriesAll(
+        supabase,
+        user.id,
+        existing.google_recurring_event_id,
+        { title: input.title, category: input.category, startTime: input.startTime, endTime: input.endTime },
+        timeZone
+      );
+      refresh();
+      return;
+    }
+  }
 
   let blockId = input.id;
-  let existingGoogleEventId: string | null = null;
-  let existingSource: string | null = null;
-
   if (blockId) {
-    const { data: existing } = await supabase
-      .from("schedule_blocks")
-      .select("google_event_id, source")
-      .eq("id", blockId)
-      .maybeSingle();
-    existingGoogleEventId = existing?.google_event_id ?? null;
-    existingSource = existing?.source ?? null;
-
     const { error } = await supabase
       .from("schedule_blocks")
       .update({ start_at: startAt, end_at: endAt, title: input.title, category: input.category })
@@ -210,30 +284,41 @@ export async function upsertScheduleBlock(input: ScheduleBlockInput) {
     blockId = inserted.id;
   }
 
-  // Push direction (Phase 10): read-only primary-calendar imports never
-  // reach here since the day view doesn't open an editor for them — this
-  // check is just a defensive backstop.
-  if (existingSource !== "google_primary") {
+  // Push direction: read-only primary-calendar imports never reach here
+  // since the day view doesn't open an editor for them — this check is
+  // just a defensive backstop.
+  if (existing?.source !== "google_primary") {
     await syncBlockToGoogle(supabase, {
       id: blockId!,
       title: input.title,
       start_at: startAt,
       end_at: endAt,
       category: input.category,
-      google_event_id: existingGoogleEventId,
+      google_event_id: existing?.google_event_id ?? null,
     });
   }
 
   refresh();
 }
 
-export async function deleteScheduleBlock(blockId: string) {
+export async function deleteScheduleBlock(blockId: string, editScope?: "this" | "all") {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
   const { data: existing } = await supabase
     .from("schedule_blocks")
-    .select("google_event_id, source")
+    .select("google_event_id, source, google_recurring_event_id")
     .eq("id", blockId)
     .maybeSingle();
+
+  if (existing?.google_recurring_event_id && (editScope ?? "this") === "all") {
+    await deleteRecurringSeries(supabase, user.id, existing.google_recurring_event_id);
+    refresh();
+    return;
+  }
 
   const { error } = await supabase.from("schedule_blocks").delete().eq("id", blockId);
   if (error) throw new Error(error.message);

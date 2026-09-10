@@ -22,6 +22,8 @@ type Block = {
   title: string;
   category: string;
   source: string;
+  google_recurring_event_id: string | null;
+  recurrence_days: number[] | null;
 };
 
 type EditingState = {
@@ -30,6 +32,8 @@ type EditingState = {
   endTime: string;
   title?: string;
   category?: string;
+  recurringEventId?: string | null;
+  recurrenceDays?: number[] | null;
 };
 
 type PendingDrag = {
@@ -141,6 +145,10 @@ export default function DayCalendar({ blocks, timeZone }: { blocks: Block[]; tim
         endTime,
         title: active.block.title,
         category: active.block.category,
+        // A drag never touches the repeat picker, so if this block is part
+        // of a series, default to moving just this one instance — matches
+        // Google Calendar's own drag behavior.
+        editScope: "this",
       });
     });
   }
@@ -215,6 +223,8 @@ export default function DayCalendar({ blocks, timeZone }: { blocks: Block[]; tim
       endTime: instantToLocalTimeString(block.end_at, timeZone),
       title: block.title,
       category: block.category,
+      recurringEventId: block.google_recurring_event_id,
+      recurrenceDays: block.recurrence_days,
     });
   }
 
@@ -358,6 +368,8 @@ export default function DayCalendar({ blocks, timeZone }: { blocks: Block[]; tim
           initialEndTime={editing.endTime}
           initialTitle={editing.title}
           initialCategory={editing.category}
+          initialRecurringEventId={editing.recurringEventId}
+          initialRecurrenceDays={editing.recurrenceDays}
           onClose={() => setEditing(null)}
         />
       )}

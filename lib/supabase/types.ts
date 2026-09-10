@@ -160,7 +160,6 @@ export type Database = {
           id: string
           last_sync_error: string | null
           last_synced_at: string | null
-          onebillion_sync_token: string | null
           primary_sync_token: string | null
           refresh_token: string
           updated_at: string
@@ -174,7 +173,6 @@ export type Database = {
           id?: string
           last_sync_error?: string | null
           last_synced_at?: string | null
-          onebillion_sync_token?: string | null
           primary_sync_token?: string | null
           refresh_token: string
           updated_at?: string
@@ -188,7 +186,6 @@ export type Database = {
           id?: string
           last_sync_error?: string | null
           last_synced_at?: string | null
-          onebillion_sync_token?: string | null
           primary_sync_token?: string | null
           refresh_token?: string
           updated_at?: string
@@ -369,7 +366,9 @@ export type Database = {
           end_at: string
           google_etag: string | null
           google_event_id: string | null
+          google_recurring_event_id: string | null
           id: string
+          recurrence_days: number[] | null
           source: string
           start_at: string
           title: string
@@ -384,7 +383,9 @@ export type Database = {
           end_at: string
           google_etag?: string | null
           google_event_id?: string | null
+          google_recurring_event_id?: string | null
           id?: string
+          recurrence_days?: number[] | null
           source?: string
           start_at: string
           title: string
@@ -399,7 +400,9 @@ export type Database = {
           end_at?: string
           google_etag?: string | null
           google_event_id?: string | null
+          google_recurring_event_id?: string | null
           id?: string
+          recurrence_days?: number[] | null
           source?: string
           start_at?: string
           title?: string
