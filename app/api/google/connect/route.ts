@@ -2,12 +2,14 @@ import { NextResponse, type NextRequest } from "next/server";
 import { google } from "googleapis";
 import { createClient } from "@/lib/supabase/server";
 
-// One scope, not calendar.events + calendar.readonly split: creating the
-// "1B" calendar (calendars.insert, in the callback) needs the Calendars
-// resource, which only the full `calendar` scope grants — the split scopes
-// cover events but not calendar creation. Confirmed both are the same
-// "sensitive" verification tier, not "restricted", so this doesn't change
-// what publishing requires.
+// Full `calendar` scope, not the split calendar.events + calendar.readonly
+// (both are the same "sensitive" verification tier, not "restricted", so
+// this doesn't change what publishing requires). Originally needed for
+// calendars.insert to create a dedicated "1B" calendar; sync now reads and
+// writes directly on the primary calendar instead (2026-09-10), so
+// calendar.events alone would cover it today — left as the broader scope
+// since Brayden's already-granted token has it and narrowing would force a
+// reconnect for no functional gain.
 const SCOPES = ["https://www.googleapis.com/auth/calendar"];
 
 export async function GET(request: NextRequest) {
