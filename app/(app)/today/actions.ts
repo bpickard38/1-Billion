@@ -11,6 +11,7 @@ import {
   DEFAULT_TIMEZONE,
 } from "@/lib/dates";
 import { materializeBlocks } from "@/lib/schedule";
+import { syncBlockToGoogle, deleteBlockFromGoogle } from "@/lib/google";
 import type { Database } from "@/lib/supabase/types";
 
 async function getTimezone(supabase: SupabaseClient<Database>) {
@@ -174,22 +175,53 @@ export async function upsertScheduleBlock(input: ScheduleBlockInput) {
   const startAt = localTimeToInstant(date, input.startTime, timeZone).toISOString();
   const endAt = localTimeToInstant(date, input.endTime, timeZone).toISOString();
 
-  if (input.id) {
+  let blockId = input.id;
+  let existingGoogleEventId: string | null = null;
+  let existingSource: string | null = null;
+
+  if (blockId) {
+    const { data: existing } = await supabase
+      .from("schedule_blocks")
+      .select("google_event_id, source")
+      .eq("id", blockId)
+      .maybeSingle();
+    existingGoogleEventId = existing?.google_event_id ?? null;
+    existingSource = existing?.source ?? null;
+
     const { error } = await supabase
       .from("schedule_blocks")
       .update({ start_at: startAt, end_at: endAt, title: input.title, category: input.category })
-      .eq("id", input.id);
+      .eq("id", blockId);
     if (error) throw new Error(error.message);
   } else {
-    const { error } = await supabase.from("schedule_blocks").insert({
-      date,
+    const { data: inserted, error } = await supabase
+      .from("schedule_blocks")
+      .insert({
+        date,
+        start_at: startAt,
+        end_at: endAt,
+        title: input.title,
+        category: input.category,
+        source: "manual",
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    blockId = inserted.id;
+  }
+
+  // Push direction (Phase 10): read-only primary-calendar imports never
+  // reach here since the day view doesn't open an editor for them — this
+  // check is just a defensive backstop.
+  if (existingSource !== "google_primary") {
+    await syncBlockToGoogle(supabase, {
+      id: blockId!,
+      title: input.title,
       start_at: startAt,
       end_at: endAt,
-      title: input.title,
       category: input.category,
-      source: "manual",
+      google_event_id: existingGoogleEventId,
     });
-    if (error) throw new Error(error.message);
   }
 
   refresh();
@@ -197,8 +229,18 @@ export async function upsertScheduleBlock(input: ScheduleBlockInput) {
 
 export async function deleteScheduleBlock(blockId: string) {
   const supabase = await createClient();
+  const { data: existing } = await supabase
+    .from("schedule_blocks")
+    .select("google_event_id, source")
+    .eq("id", blockId)
+    .maybeSingle();
+
   const { error } = await supabase.from("schedule_blocks").delete().eq("id", blockId);
   if (error) throw new Error(error.message);
+
+  if (existing?.source !== "google_primary") {
+    await deleteBlockFromGoogle(supabase, existing?.google_event_id ?? null);
+  }
 
   refresh();
 }

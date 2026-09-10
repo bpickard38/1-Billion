@@ -2,6 +2,8 @@
 
 import { refresh } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { syncGoogleCalendarForUser } from "@/lib/google";
+import { DEFAULT_TIMEZONE } from "@/lib/dates";
 
 export async function disconnectGoogle() {
   const supabase = await createClient();
@@ -24,6 +26,24 @@ export async function disconnectGoogle() {
 
   const { error } = await supabase.from("google_tokens").delete().eq("id", existing.id);
   if (error) throw new Error(error.message);
+
+  refresh();
+}
+
+export async function syncGoogleCalendarNow() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const [{ data: tokenRow }, { data: profile }] = await Promise.all([
+    supabase.from("google_tokens").select("*").maybeSingle(),
+    supabase.from("profiles").select("timezone").maybeSingle(),
+  ]);
+  if (!tokenRow) return;
+
+  await syncGoogleCalendarForUser(supabase, user.id, tokenRow, profile?.timezone ?? DEFAULT_TIMEZONE);
 
   refresh();
 }

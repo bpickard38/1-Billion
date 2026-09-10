@@ -10,6 +10,7 @@ import {
 } from "@/lib/dates";
 import { kindsScheduledAtHour, notificationContent, isNotificationEnabled } from "@/lib/notifications";
 import { computeWeekScore } from "@/lib/score";
+import { syncGoogleCalendarForUser } from "@/lib/google";
 import type { Database, Json } from "@/lib/supabase/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -208,6 +209,18 @@ export async function POST(request: Request) {
     if (weekday === 1 && hour === 0) {
       await autoCloseStaleWeeks(admin, profile.id, timeZone);
       weeksClosed++;
+    }
+
+    // Pull direction (Phase 10), same cadence as the Schedule tab's
+    // on-load sync — this is what keeps the day view current when the app
+    // isn't open to trigger a sync itself.
+    const { data: tokenRow } = await admin
+      .from("google_tokens")
+      .select("*")
+      .eq("user_id", profile.id)
+      .maybeSingle();
+    if (tokenRow) {
+      await syncGoogleCalendarForUser(admin, profile.id, tokenRow, timeZone);
     }
   }
 

@@ -17,7 +17,10 @@ export default async function MorePage({
     searchParams,
     createClient(),
   ]);
-  const { data: googleTokens } = await supabase.from("google_tokens").select("id").maybeSingle();
+  const { data: googleTokens } = await supabase
+    .from("google_tokens")
+    .select("id, last_synced_at, last_sync_error")
+    .maybeSingle();
   const googleError = typeof google_error === "string" ? google_error : null;
 
   return (
@@ -47,7 +50,12 @@ export default async function MorePage({
 
       <p className="mb-2 text-xs uppercase tracking-wide text-muted">Google Calendar</p>
       <div className="mb-8">
-        <GoogleCalendarSettings connected={Boolean(googleTokens)} error={googleError} />
+        <GoogleCalendarSettings
+          connected={Boolean(googleTokens)}
+          error={googleError}
+          lastSyncedAt={googleTokens?.last_synced_at ?? null}
+          lastSyncError={googleTokens?.last_sync_error ?? null}
+        />
       </div>
 
       <form action={logout}>

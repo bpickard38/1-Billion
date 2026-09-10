@@ -15,6 +15,7 @@ type Block = {
   end_at: string;
   title: string;
   category: string;
+  source: string;
 };
 
 type EditingState = {
@@ -120,23 +121,42 @@ export default function DayCalendar({ blocks, timeZone }: { blocks: Block[]; tim
           </button>
         ))}
 
-        {positioned.map(({ block, top, height }) => (
-          <button
-            key={block.id}
-            type="button"
-            onClick={() => openEditBlock(block)}
-            className={`absolute left-12 right-1 overflow-hidden rounded border px-2 py-1 text-left text-xs ${categoryBlockClass(
-              block.category
-            )} ${isProtectedCategory(block.category) ? "border-l-4 border-l-accent" : ""}`}
-            style={{ top: `${top}px`, height: `${height}px` }}
-          >
-            <span className="block truncate font-medium text-fg">{block.title}</span>
-            <span className="block truncate text-muted">
-              {instantToLocalTimeString(block.start_at, timeZone)}–
-              {instantToLocalTimeString(block.end_at, timeZone)}
-            </span>
-          </button>
-        ))}
+        {positioned.map(({ block, top, height }) => {
+          // Primary-calendar imports are read-only (Phase 10 §6 step 5) —
+          // no tap-to-edit, rendered greyed so it reads as "not yours to move."
+          if (block.source === "google_primary") {
+            return (
+              <div
+                key={block.id}
+                className="absolute left-12 right-1 overflow-hidden rounded border border-dashed border-muted/50 bg-muted/10 px-2 py-1 text-left text-xs opacity-70"
+                style={{ top: `${top}px`, height: `${height}px` }}
+              >
+                <span className="block truncate font-medium text-muted">{block.title}</span>
+                <span className="block truncate text-muted">
+                  {instantToLocalTimeString(block.start_at, timeZone)}–
+                  {instantToLocalTimeString(block.end_at, timeZone)}
+                </span>
+              </div>
+            );
+          }
+          return (
+            <button
+              key={block.id}
+              type="button"
+              onClick={() => openEditBlock(block)}
+              className={`absolute left-12 right-1 overflow-hidden rounded border px-2 py-1 text-left text-xs ${categoryBlockClass(
+                block.category
+              )} ${isProtectedCategory(block.category) ? "border-l-4 border-l-accent" : ""}`}
+              style={{ top: `${top}px`, height: `${height}px` }}
+            >
+              <span className="block truncate font-medium text-fg">{block.title}</span>
+              <span className="block truncate text-muted">
+                {instantToLocalTimeString(block.start_at, timeZone)}–
+                {instantToLocalTimeString(block.end_at, timeZone)}
+              </span>
+            </button>
+          );
+        })}
 
         <div
           ref={nowLineRef}
