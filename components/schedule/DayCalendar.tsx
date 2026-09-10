@@ -3,11 +3,17 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { localMinutesSinceMidnight, instantToLocalTimeString } from "@/lib/dates";
 import { categoryBlockClass, isProtectedCategory } from "@/lib/categories";
-import { saveTodayAsTemplate } from "@/app/(app)/today/actions";
+import { saveTodayAsTemplate, upsertScheduleBlock } from "@/app/(app)/today/actions";
 import BlockEditor from "./BlockEditor";
 
 const HOUR_HEIGHT = 56; // px per hour row
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const SNAP_MINUTES = 15;
+const LONG_PRESS_MS = 350; // touch: how long a hold has to last before a drag engages
+const DRAG_START_PX = 5; // mouse: movement past this promotes a plain click into a drag
+const SCROLL_CANCEL_PX = 10; // touch: movement past this before the hold finishes cancels the drag
+const MIN_BLOCK_HEIGHT = 22;
+const COMPACT_HEIGHT = 36; // below this, title + time share one line instead of stacking (fixes the time getting clipped on short blocks)
 
 type Block = {
   id: string;
@@ -26,6 +32,18 @@ type EditingState = {
   category?: string;
 };
 
+type PendingDrag = {
+  blockId: string;
+  pointerId: number;
+  pointerType: string;
+  startClientY: number;
+  originalTop: number;
+  durationMin: number;
+  block: Block;
+};
+
+type ActiveDrag = PendingDrag & { offsetTop: number };
+
 function hourLabel(hour: number) {
   const period = hour < 12 ? "AM" : "PM";
   const displayHour = hour % 12 === 0 ? 12 : hour % 12;
@@ -36,16 +54,38 @@ function pad(n: number) {
   return n.toString().padStart(2, "0");
 }
 
+function minutesToLabel(totalMinutes: number) {
+  const h = Math.floor(totalMinutes / 60) % 24;
+  const m = ((totalMinutes % 60) + 60) % 60;
+  const period = h < 12 ? "AM" : "PM";
+  const displayHour = h % 12 === 0 ? 12 : h % 12;
+  return `${displayHour}:${pad(m)} ${period}`;
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function snapMinutesToTop(minutes: number, durationMin: number): number {
+  const snapped = clamp(Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES, 0, 24 * 60 - durationMin);
+  return (snapped / 60) * HOUR_HEIGHT;
+}
+
 // Google-Calendar-style day view: hourly rows, tap an empty slot to add a
-// block, tap a block to edit or delete it. Today's schedule_blocks only —
-// no date navigation yet (this is still Phase 3's standalone schedule, not
-// the Phase 10 Google sync).
+// block, tap a block to edit or delete it, press-and-drag a block to
+// reschedule it — mouse drags as soon as it moves, touch needs a brief hold
+// first (a plain scroll or tap shouldn't get mistaken for a move). Today's
+// schedule_blocks only — no date navigation yet.
 export default function DayCalendar({ blocks, timeZone }: { blocks: Block[]; timeZone: string }) {
   const [now, setNow] = useState(() => new Date());
   const [editing, setEditing] = useState<EditingState | null>(null);
+  const [drag, setDrag] = useState<ActiveDrag | null>(null);
   const [, startTransition] = useTransition();
   const nowLineRef = useRef<HTMLDivElement>(null);
   const scrolledRef = useRef(false);
+  const pendingRef = useRef<PendingDrag | null>(null);
+  const longPressTimerRef = useRef<number | null>(null);
+  const didDragRef = useRef(false);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 60_000);
@@ -68,12 +108,92 @@ export default function DayCalendar({ blocks, timeZone }: { blocks: Block[]; tim
         const endMin = rawEndMin > startMin ? rawEndMin : 24 * 60;
         return {
           block,
+          durationMin: endMin - startMin,
           top: (startMin / 60) * HOUR_HEIGHT,
-          height: Math.max(((endMin - startMin) / 60) * HOUR_HEIGHT, 22),
+          height: Math.max(((endMin - startMin) / 60) * HOUR_HEIGHT, MIN_BLOCK_HEIGHT),
         };
       }),
     [blocks, timeZone]
   );
+
+  function clearPending() {
+    pendingRef.current = null;
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }
+
+  function commitDrag(active: ActiveDrag) {
+    const startMinutes = clamp(
+      Math.round((active.offsetTop / HOUR_HEIGHT) * 60 / SNAP_MINUTES) * SNAP_MINUTES,
+      0,
+      24 * 60 - active.durationMin
+    );
+    const endMinutes = startMinutes + active.durationMin;
+    const startTime = `${pad(Math.floor(startMinutes / 60))}:${pad(startMinutes % 60)}`;
+    const endTime = `${pad(Math.floor(endMinutes / 60))}:${pad(endMinutes % 60)}`;
+
+    startTransition(async () => {
+      await upsertScheduleBlock({
+        id: active.blockId,
+        startTime,
+        endTime,
+        title: active.block.title,
+        category: active.block.category,
+      });
+    });
+  }
+
+  // Global listeners, not per-block handlers, since the pointer moves well
+  // outside the small block element once a drag is underway.
+  useEffect(() => {
+    function handlePointerMove(e: PointerEvent) {
+      if (drag && e.pointerId === drag.pointerId) {
+        const deltaY = e.clientY - drag.startClientY;
+        const rawMinutes = ((drag.originalTop + deltaY) / HOUR_HEIGHT) * 60;
+        const snappedTop = snapMinutesToTop(rawMinutes, drag.durationMin);
+        if (snappedTop !== drag.offsetTop) {
+          setDrag((d) => (d && d.pointerId === e.pointerId ? { ...d, offsetTop: snappedTop } : d));
+        }
+        return;
+      }
+
+      const pending = pendingRef.current;
+      if (!pending || pending.pointerId !== e.pointerId) return;
+      const deltaY = e.clientY - pending.startClientY;
+
+      if (pending.pointerType === "mouse") {
+        if (Math.abs(deltaY) >= DRAG_START_PX) {
+          didDragRef.current = true;
+          setDrag({ ...pending, offsetTop: pending.originalTop });
+        }
+      } else if (Math.abs(deltaY) >= SCROLL_CANCEL_PX) {
+        // Moved before the hold finished — the user meant to scroll or
+        // reposition their finger, not drag. Let the tap/scroll happen.
+        clearPending();
+      }
+    }
+
+    function handlePointerUp(e: PointerEvent) {
+      if (drag && e.pointerId === drag.pointerId) {
+        commitDrag(drag);
+        setDrag(null);
+      }
+      if (pendingRef.current?.pointerId === e.pointerId) {
+        clearPending();
+      }
+    }
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
+    };
+  }, [drag]);
 
   function openNewBlock(hour: number) {
     setEditing({
@@ -83,6 +203,12 @@ export default function DayCalendar({ blocks, timeZone }: { blocks: Block[]; tim
   }
 
   function openEditBlock(block: Block) {
+    // A drag ending under the pointer still fires a native click right
+    // after — swallow that one instead of also opening the editor.
+    if (didDragRef.current) {
+      didDragRef.current = false;
+      return;
+    }
     setEditing({
       blockId: block.id,
       startTime: instantToLocalTimeString(block.start_at, timeZone),
@@ -90,6 +216,32 @@ export default function DayCalendar({ blocks, timeZone }: { blocks: Block[]; tim
       title: block.title,
       category: block.category,
     });
+  }
+
+  function handleBlockPointerDown(block: Block, top: number, durationMin: number) {
+    return (e: React.PointerEvent<HTMLButtonElement>) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+
+      const pending: PendingDrag = {
+        blockId: block.id,
+        pointerId: e.pointerId,
+        pointerType: e.pointerType,
+        startClientY: e.clientY,
+        originalTop: top,
+        durationMin,
+        block,
+      };
+      pendingRef.current = pending;
+
+      if (e.pointerType !== "mouse") {
+        longPressTimerRef.current = window.setTimeout(() => {
+          if (pendingRef.current?.blockId !== pending.blockId) return;
+          didDragRef.current = true;
+          setDrag({ ...pending, offsetTop: pending.originalTop });
+          navigator.vibrate?.(15);
+        }, LONG_PRESS_MS);
+      }
+    };
   }
 
   return (
@@ -121,39 +273,70 @@ export default function DayCalendar({ blocks, timeZone }: { blocks: Block[]; tim
           </button>
         ))}
 
-        {positioned.map(({ block, top, height }) => {
+        {positioned.map(({ block, top, height, durationMin }) => {
           // Primary-calendar imports are read-only (Phase 10 §6 step 5) —
-          // no tap-to-edit, rendered greyed so it reads as "not yours to move."
+          // no tap-to-edit and no dragging, rendered greyed so it reads as
+          // "not yours to move."
           if (block.source === "google_primary") {
+            const compact = height < COMPACT_HEIGHT;
             return (
               <div
                 key={block.id}
-                className="absolute left-12 right-1 overflow-hidden rounded border border-dashed border-muted/50 bg-muted/10 px-2 py-1 text-left text-xs opacity-70"
+                className="absolute left-12 right-1 overflow-hidden rounded border border-dashed border-muted/50 bg-muted/10 px-2 py-0.5 text-left text-xs opacity-70"
                 style={{ top: `${top}px`, height: `${height}px` }}
               >
-                <span className="block truncate font-medium text-muted">{block.title}</span>
-                <span className="block truncate text-muted">
-                  {instantToLocalTimeString(block.start_at, timeZone)}–
-                  {instantToLocalTimeString(block.end_at, timeZone)}
-                </span>
+                {compact ? (
+                  <span className="block truncate text-muted">
+                    {instantToLocalTimeString(block.start_at, timeZone)} {block.title}
+                  </span>
+                ) : (
+                  <>
+                    <span className="block truncate font-medium text-muted">{block.title}</span>
+                    <span className="block truncate text-muted">
+                      {instantToLocalTimeString(block.start_at, timeZone)}–
+                      {instantToLocalTimeString(block.end_at, timeZone)}
+                    </span>
+                  </>
+                )}
               </div>
             );
           }
+
+          const isDragging = drag?.blockId === block.id;
+          const renderTop = isDragging ? drag.offsetTop : top;
+          const compact = height < COMPACT_HEIGHT;
+          const startLabel = isDragging
+            ? minutesToLabel(Math.round((drag.offsetTop / HOUR_HEIGHT) * 60))
+            : instantToLocalTimeString(block.start_at, timeZone);
+          const endLabel = isDragging
+            ? minutesToLabel(Math.round((drag.offsetTop / HOUR_HEIGHT) * 60) + durationMin)
+            : instantToLocalTimeString(block.end_at, timeZone);
+
           return (
             <button
               key={block.id}
               type="button"
+              onPointerDown={handleBlockPointerDown(block, top, durationMin)}
               onClick={() => openEditBlock(block)}
-              className={`absolute left-12 right-1 overflow-hidden rounded border px-2 py-1 text-left text-xs ${categoryBlockClass(
+              className={`absolute left-12 right-1 select-none overflow-hidden rounded border px-2 py-0.5 text-left text-xs ${categoryBlockClass(
                 block.category
-              )} ${isProtectedCategory(block.category) ? "border-l-4 border-l-accent" : ""}`}
-              style={{ top: `${top}px`, height: `${height}px` }}
+              )} ${isProtectedCategory(block.category) ? "border-l-4 border-l-accent" : ""} ${
+                isDragging ? "z-20 cursor-grabbing shadow-lg" : "cursor-grab"
+              }`}
+              style={{ top: `${renderTop}px`, height: `${height}px`, touchAction: "none" }}
             >
-              <span className="block truncate font-medium text-fg">{block.title}</span>
-              <span className="block truncate text-muted">
-                {instantToLocalTimeString(block.start_at, timeZone)}–
-                {instantToLocalTimeString(block.end_at, timeZone)}
-              </span>
+              {compact ? (
+                <span className="block truncate font-medium text-fg">
+                  {startLabel} {block.title}
+                </span>
+              ) : (
+                <>
+                  <span className="block truncate font-medium text-fg">{block.title}</span>
+                  <span className="block truncate text-muted">
+                    {startLabel}–{endLabel}
+                  </span>
+                </>
+              )}
             </button>
           );
         })}
