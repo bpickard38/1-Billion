@@ -70,6 +70,14 @@ create index planning_chat_messages_user_date_idx on public.planning_chat_messag
 -- "uncomfortable_rep" is gone with the habit it tracked.
 -- ---------------------------------------------------------------------------
 alter table public.notification_log drop constraint notification_log_kind_check;
+
+-- Existing rows logged under the old kind names must satisfy the new
+-- constraint too: "today_priority" maps onto its replacement, and any
+-- "uncomfortable_rep" rows are just historical send-log noise with no
+-- replacement kind to map onto.
+update public.notification_log set kind = 'plan_day' where kind = 'today_priority';
+delete from public.notification_log where kind = 'uncomfortable_rep';
+
 alter table public.notification_log
   add constraint notification_log_kind_check
     check (kind in ('plan_day', 'daily_review', 'weekly_review', 'followup_reminder'));

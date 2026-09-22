@@ -80,7 +80,10 @@ export async function sendPlanningMessage(dateInput: string, textInput: string) 
       timeZone,
       busy: busy.map((b) => ({ title: b.title, start_at: b.start_at, end_at: b.end_at })),
       existingTodos: (existingTodos ?? []).map((t) => t.title),
-      history: [...(history ?? []), { role: "user" as const, content: text }],
+      history: [
+        ...(history ?? []).map((h) => ({ role: h.role as "user" | "assistant", content: h.content })),
+        { role: "user" as const, content: text },
+      ],
     });
 
     const payload = turn.ready ? { ready: true, todos: turn.todos, blocks: turn.blocks } : null;

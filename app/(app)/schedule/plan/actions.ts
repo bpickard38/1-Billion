@@ -59,7 +59,7 @@ export async function estimateTasks(idsInput: string[], requestInput: string) {
     const request = z.string().max(4000).parse(requestInput);
     const { db, user } = await planningContext();
     if (!ids.length && !request.trim()) throw new Error("Select assignments or describe what you want to do.");
-    const { data: allowed, error: limitError } = await db.rpc("claim_planner_ai",{});
+    const { data: allowed, error: limitError } = await db.rpc("claim_planner_ai");
     databaseError(limitError);
     if (!allowed) throw new Error("Please wait 30 seconds between AI requests.");
     const { data: assignments, error } = await db.from("canvas_assignments").select("*").eq("user_id",user.id).eq("active",true).eq("submitted",false).in("id", ids);

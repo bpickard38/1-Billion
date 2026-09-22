@@ -39,6 +39,81 @@ export type Database = {
   }
   public: {
     Tables: {
+      canvas_assignments: {
+        Row: {
+          active: boolean
+          course_id: string
+          course_name: string
+          description: string
+          due_at: string | null
+          estimate_note: string | null
+          estimate_source: string | null
+          estimated_minutes: number | null
+          external_id: string
+          id: string
+          submitted: boolean
+          title: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          course_id: string
+          course_name: string
+          description?: string
+          due_at?: string | null
+          estimate_note?: string | null
+          estimate_source?: string | null
+          estimated_minutes?: number | null
+          external_id: string
+          id?: string
+          submitted?: boolean
+          title: string
+          url: string
+          user_id?: string
+        }
+        Update: {
+          active?: boolean
+          course_id?: string
+          course_name?: string
+          description?: string
+          due_at?: string | null
+          estimate_note?: string | null
+          estimate_source?: string | null
+          estimated_minutes?: number | null
+          external_id?: string
+          id?: string
+          submitted?: boolean
+          title?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      canvas_connections: {
+        Row: {
+          courses: Json
+          last_synced_at: string | null
+          selected_course_ids: string[]
+          token_ciphertext: string
+          user_id: string
+        }
+        Insert: {
+          courses?: Json
+          last_synced_at?: string | null
+          selected_course_ids?: string[]
+          token_ciphertext: string
+          user_id?: string
+        }
+        Update: {
+          courses?: Json
+          last_synced_at?: string | null
+          selected_course_ids?: string[]
+          token_ciphertext?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       daily_entries: {
         Row: {
           accomplished: string | null
@@ -46,10 +121,7 @@ export type Database = {
           date: string
           id: string
           learned: string | null
-          priority_goal_id: string | null
-          priority_text: string | null
           submitted_at: string | null
-          tomorrow_priority: string | null
           updated_at: string
           user_id: string
         }
@@ -59,10 +131,7 @@ export type Database = {
           date: string
           id?: string
           learned?: string | null
-          priority_goal_id?: string | null
-          priority_text?: string | null
           submitted_at?: string | null
-          tomorrow_priority?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -72,22 +141,11 @@ export type Database = {
           date?: string
           id?: string
           learned?: string | null
-          priority_goal_id?: string | null
-          priority_text?: string | null
           submitted_at?: string | null
-          tomorrow_priority?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "daily_entries_priority_goal_id_fkey"
-            columns: ["priority_goal_id"]
-            isOneToOne: false
-            referencedRelation: "goals"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       goals: {
         Row: {
@@ -193,77 +251,6 @@ export type Database = {
         }
         Relationships: []
       }
-      habit_logs: {
-        Row: {
-          created_at: string
-          date: string
-          done: boolean
-          habit_id: string
-          id: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          date: string
-          done?: boolean
-          habit_id: string
-          id?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Update: {
-          created_at?: string
-          date?: string
-          done?: boolean
-          habit_id?: string
-          id?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "habit_logs_habit_id_fkey"
-            columns: ["habit_id"]
-            isOneToOne: false
-            referencedRelation: "habits"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      habits: {
-        Row: {
-          active: boolean
-          created_at: string
-          days_of_week: number[]
-          id: string
-          name: string
-          sort: number
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          active?: boolean
-          created_at?: string
-          days_of_week?: number[]
-          id?: string
-          name: string
-          sort?: number
-          updated_at?: string
-          user_id?: string
-        }
-        Update: {
-          active?: boolean
-          created_at?: string
-          days_of_week?: number[]
-          id?: string
-          name?: string
-          sort?: number
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       notification_log: {
         Row: {
           id: string
@@ -287,6 +274,78 @@ export type Database = {
           ref_id?: string
           sent_at?: string
           sent_for?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      planning_chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          date: string
+          id: string
+          payload: Json | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          date: string
+          id?: string
+          payload?: Json | null
+          role: string
+          user_id?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          date?: string
+          id?: string
+          payload?: Json | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      planning_drafts: {
+        Row: {
+          blocks: Json
+          created_at: string
+          id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          blocks: Json
+          created_at?: string
+          id?: string
+          status?: string
+          user_id?: string
+        }
+        Update: {
+          blocks?: Json
+          created_at?: string
+          id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      planning_preferences: {
+        Row: {
+          last_ai_at: string | null
+          preferences: Json
+          user_id: string
+        }
+        Insert: {
+          last_ai_at?: string | null
+          preferences?: Json
+          user_id?: string
+        }
+        Update: {
+          last_ai_at?: string | null
+          preferences?: Json
           user_id?: string
         }
         Relationships: []
@@ -359,6 +418,7 @@ export type Database = {
       }
       schedule_blocks: {
         Row: {
+          assignment_id: string | null
           category: string
           created_at: string
           date: string
@@ -368,6 +428,7 @@ export type Database = {
           google_event_id: string | null
           google_recurring_event_id: string | null
           id: string
+          planning_draft_id: string | null
           recurrence_days: number[] | null
           source: string
           start_at: string
@@ -376,6 +437,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          assignment_id?: string | null
           category: string
           created_at?: string
           date: string
@@ -385,6 +447,7 @@ export type Database = {
           google_event_id?: string | null
           google_recurring_event_id?: string | null
           id?: string
+          planning_draft_id?: string | null
           recurrence_days?: number[] | null
           source?: string
           start_at: string
@@ -393,6 +456,7 @@ export type Database = {
           user_id?: string
         }
         Update: {
+          assignment_id?: string | null
           category?: string
           created_at?: string
           date?: string
@@ -402,6 +466,7 @@ export type Database = {
           google_event_id?: string | null
           google_recurring_event_id?: string | null
           id?: string
+          planning_draft_id?: string | null
           recurrence_days?: number[] | null
           source?: string
           start_at?: string
@@ -409,7 +474,22 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "schedule_blocks_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "canvas_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_blocks_planning_draft_id_fkey"
+            columns: ["planning_draft_id"]
+            isOneToOne: false
+            referencedRelation: "planning_drafts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       schedule_templates: {
         Row: {
@@ -521,6 +601,39 @@ export type Database = {
           },
         ]
       }
+      todos: {
+        Row: {
+          created_at: string
+          date: string
+          done: boolean
+          id: string
+          sort: number
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          done?: boolean
+          id?: string
+          sort?: number
+          title: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          done?: boolean
+          id?: string
+          sort?: number
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       weekly_reviews: {
         Row: {
           answers: Json
@@ -568,7 +681,35 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      claim_planner_ai: { Args: never; Returns: boolean }
+      confirm_planning_draft: {
+        Args: { draft_id: string }
+        Returns: {
+          assignment_id: string | null
+          category: string
+          created_at: string
+          date: string
+          done: boolean
+          end_at: string
+          google_etag: string | null
+          google_event_id: string | null
+          google_recurring_event_id: string | null
+          id: string
+          planning_draft_id: string | null
+          recurrence_days: number[] | null
+          source: string
+          start_at: string
+          title: string
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "schedule_blocks"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
     }
     Enums: {
       [_ in never]: never
