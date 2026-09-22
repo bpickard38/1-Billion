@@ -1,7 +1,7 @@
 import type { ScoreBreakdownRow } from "@/lib/score";
 
 // Moved here from the removed Week tab (nav rework) — this is now the only
-// place the current week's streak + per-habit percentages show.
+// place the current week's streak + per-day to-do percentages show.
 export default function WeekStreakCard({
   score,
   label,
@@ -28,8 +28,8 @@ export default function WeekStreakCard({
       {breakdown.length > 0 && (
         <ul className="mt-3 flex flex-col gap-1">
           {breakdown.map((row) => (
-            <li key={row.habitId} className="flex items-center justify-between text-sm">
-              <span>{row.name}</span>
+            <li key={row.date} className="flex items-center justify-between text-sm">
+              <span>{row.label}</span>
               <span className="text-muted">{row.pct}%</span>
             </li>
           ))}

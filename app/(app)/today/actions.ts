@@ -19,6 +19,7 @@ import {
   updateSeriesAll,
 } from "@/lib/google";
 import type { Database } from "@/lib/supabase/types";
+import type { AppDatabase } from "@/lib/app-database";
 
 async function getTimezone(supabase: SupabaseClient<Database>) {
   const { data } = await supabase.from("profiles").select("timezone").maybeSingle();
@@ -29,81 +30,79 @@ async function todayString(supabase: SupabaseClient<Database>) {
   return getLocalDateString(new Date(), await getTimezone(supabase));
 }
 
-async function tomorrowString(supabase: SupabaseClient<Database>) {
-  const timeZone = await getTimezone(supabase);
-  return getLocalDateString(new Date(Date.now() + 24 * 60 * 60 * 1000), timeZone);
+function appDb(supabase: SupabaseClient<Database>) {
+  return supabase as unknown as SupabaseClient<AppDatabase>;
 }
 
-export async function setPriority(text: string, goalId: string | null) {
-  const supabase = await createClient();
-  const date = await todayString(supabase);
-
-  const { error } = await supabase
-    .from("daily_entries")
-    .upsert(
-      { date, priority_text: text, priority_goal_id: goalId },
-      { onConflict: "user_id,date" }
-    );
-  if (error) throw new Error(error.message);
-
-  refresh();
-}
-
-export async function toggleHabit(habitId: string, done: boolean) {
-  const supabase = await createClient();
-  const date = await todayString(supabase);
-
-  const { error } = await supabase
-    .from("habit_logs")
-    .upsert({ habit_id: habitId, date, done }, { onConflict: "habit_id,date" });
-  if (error) throw new Error(error.message);
-
-  refresh();
-}
-
-export async function addHabit(name: string) {
-  const trimmed = name.trim();
+export async function addTodo(title: string) {
+  const trimmed = title.trim();
   if (!trimmed) return;
 
   const supabase = await createClient();
-  const { data: lastHabit } = await supabase
-    .from("habits")
+  const date = await todayString(supabase);
+  const db = appDb(supabase);
+
+  const { data: last } = await db
+    .from("todos")
     .select("sort")
+    .eq("date", date)
     .order("sort", { ascending: false })
     .limit(1)
     .maybeSingle();
-  const sort = (lastHabit?.sort ?? 0) + 1;
+  const sort = (last?.sort ?? 0) + 1;
 
-  const { error } = await supabase.from("habits").insert({ name: trimmed, sort });
+  const { error } = await db.from("todos").insert({ date, title: trimmed, sort });
   if (error) throw new Error(error.message);
 
   refresh();
 }
 
-export type HabitUpdateInput = {
-  name: string;
-  daysOfWeek: number[];
-  active: boolean;
-};
-
-export async function updateHabit(habitId: string, input: HabitUpdateInput) {
-  const trimmed = input.name.trim();
-  if (!trimmed || input.daysOfWeek.length === 0) return;
-
+export async function toggleTodo(todoId: string, done: boolean) {
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("habits")
-    .update({ name: trimmed, days_of_week: input.daysOfWeek, active: input.active })
-    .eq("id", habitId);
+  const { error } = await appDb(supabase).from("todos").update({ done }).eq("id", todoId);
   if (error) throw new Error(error.message);
 
   refresh();
 }
 
-export async function deleteHabit(habitId: string) {
+export async function editTodo(todoId: string, title: string) {
+  const trimmed = title.trim();
+  if (!trimmed) return;
+
   const supabase = await createClient();
-  const { error } = await supabase.from("habits").delete().eq("id", habitId);
+  const { error } = await appDb(supabase).from("todos").update({ title: trimmed }).eq("id", todoId);
   if (error) throw new Error(error.message);
+
+  refresh();
+}
+
+export async function deleteTodo(todoId: string) {
+  const supabase = await createClient();
+  const { error } = await appDb(supabase).from("todos").delete().eq("id", todoId);
+  if (error) throw new Error(error.message);
+
+  refresh();
+}
+
+// Swaps `sort` with the neighbor above/below — #1 (lowest sort) is today's priority.
+export async function moveTodo(todoId: string, direction: "up" | "down") {
+  const supabase = await createClient();
+  const date = await todayString(supabase);
+  const db = appDb(supabase);
+
+  const { data: todos } = await db.from("todos").select("id, sort").eq("date", date).order("sort");
+  if (!todos) return;
+
+  const index = todos.findIndex((t) => t.id === todoId);
+  const swapWith = direction === "up" ? index - 1 : index + 1;
+  if (index < 0 || swapWith < 0 || swapWith >= todos.length) return;
+
+  const current = todos[index];
+  const other = todos[swapWith];
+  const { error: firstError } = await db.from("todos").update({ sort: other.sort }).eq("id", current.id);
+  if (firstError) throw new Error(firstError.message);
+  const { error: secondError } = await db.from("todos").update({ sort: current.sort }).eq("id", other.id);
+  if (secondError) throw new Error(secondError.message);
 
   refresh();
 }
@@ -111,50 +110,22 @@ export async function deleteHabit(habitId: string) {
 export type DailyReviewInput = {
   accomplished: string;
   learned: string;
-  tomorrowPriority: string;
 };
 
-// Submitting the daily review: (a) sets tomorrow's #1 priority, (b) checks
-// the "Daily review" habit.
 export async function submitDailyReview(input: DailyReviewInput) {
   const supabase = await createClient();
   const date = await todayString(supabase);
-  const nextDate = await tomorrowString(supabase);
 
-  const { error: entryError } = await supabase.from("daily_entries").upsert(
+  const { error } = await supabase.from("daily_entries").upsert(
     {
       date,
       accomplished: input.accomplished,
       learned: input.learned,
-      tomorrow_priority: input.tomorrowPriority,
       submitted_at: new Date().toISOString(),
     },
     { onConflict: "user_id,date" }
   );
-  if (entryError) throw new Error(entryError.message);
-
-  const { data: reviewHabit } = await supabase
-    .from("habits")
-    .select("id")
-    .eq("name", "Daily review")
-    .maybeSingle();
-  if (reviewHabit) {
-    const { error: habitError } = await supabase
-      .from("habit_logs")
-      .upsert(
-        { habit_id: reviewHabit.id, date, done: true },
-        { onConflict: "habit_id,date" }
-      );
-    if (habitError) throw new Error(habitError.message);
-  }
-
-  const { error: tomorrowError } = await supabase
-    .from("daily_entries")
-    .upsert(
-      { date: nextDate, priority_text: input.tomorrowPriority },
-      { onConflict: "user_id,date" }
-    );
-  if (tomorrowError) throw new Error(tomorrowError.message);
+  if (error) throw new Error(error.message);
 
   refresh();
 }

@@ -2,13 +2,25 @@
 
 Implemented for this personal app: read-only BYU Canvas imports, editable effort estimates, optional OpenAI estimation, daily/next-seven-days previews, approval, Google sync retry, and undo. Goal coaching remains a later phase.
 
+The "Plan my day" flow (days=1) is now a conversational chat instead of a checkbox form — see "Daily planning chat" below. "Plan the next 7 days" (Canvas assignment auto-scheduling) is unchanged.
+
 ## One-time server setup
 
-1. Apply `supabase/migrations/0012_canvas_planner.sql` to the same Supabase project as the app, after migrations 0001–0011. No live migration was applied during implementation.
+1. Apply `supabase/migrations/0012_canvas_planner.sql` and `0013_todos_and_planning_chat.sql` to the same Supabase project as the app, after migrations 0001–0011. No live migration was applied during implementation.
 2. Add `CANVAS_TOKEN_ENCRYPTION_KEY` to the server environment. Generate 32 random bytes as 64 hexadecimal characters, for example with `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`. Keep the key stable across deployments. Changing it requires reconnecting Canvas. Do not prefix it with `NEXT_PUBLIC_`.
-3. For AI estimates, add `OPENAI_API_KEY` and `OPENAI_MODEL` to the server environment. Set a model available to your API account that supports Responses structured outputs. Durations can be entered manually until these are configured. Use your provider account's spending controls.
+3. For AI estimates and the daily planning chat, add `OPENAI_API_KEY` and `OPENAI_MODEL` to the server environment. Set a model available to your API account that supports Responses structured outputs. Durations can be entered manually until these are configured; the daily chat shows "AI is not connected yet" until they are.
 4. Redeploy/restart the app after configuring the environment. Existing Supabase and Google environment settings still apply.
-5. After migration, regenerate Supabase types with `npm run db:types`. The temporary companion schema in `lib/planning-database.ts` describes migration 0012 for local checks before the live database is updated.
+5. After migration, regenerate Supabase types with `npm run db:types`. The temporary companion schemas in `lib/planning-database.ts` (0012) and `lib/app-database.ts` (0013: `todos`, `planning_chat_messages`) describe the new tables for local checks before the live database is updated.
+
+## Daily planning chat (habits and the priority field are gone)
+
+Habits, habit check-ins, and the "#1 priority today" field were removed 2026-09-21 (migration `0013_todos_and_planning_chat.sql`). Today now has a plain to-do list instead — item 1 (lowest `sort`) is the priority. The list is normally filled in by chatting through "Plan my day":
+
+1. Open Today → **Plan today**, or Schedule → **Plan my day**.
+2. The assistant asks what today should look like; reply in plain language (what you want to get done, anything already fixed in time). It asks at most one short follow-up at a time.
+3. Once it has enough, it proposes a to-do list (ordered) and, optionally, time blocks. Tap **Add to my day** to write them — to-dos are appended to today's list, blocks go through the same confirm/undo path (and Google sync) as the 7-day planner, so a conflicting time is rejected with a clear error instead of silently overlapping something.
+4. Keep chatting afterward (e.g. "swap the gym block to 6pm") — each ready proposal is independent; only the one you confirm gets written.
+5. The weekly score (Today's "This week" card, `/week/review`) is now to-dos done ÷ to-dos created that week, replacing the old habit-completion score. The per-row breakdown is by day (Mon, Tue, ...) instead of by habit.
 
 ## Connect your token
 

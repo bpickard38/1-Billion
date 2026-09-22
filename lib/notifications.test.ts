@@ -6,17 +6,10 @@ import {
   isNotificationEnabled,
 } from "./notifications.ts";
 
-test("kindsScheduledAtHour: today_priority fires at hour 7 only", () => {
-  assert.deepEqual(kindsScheduledAtHour(3, 7), ["today_priority"]);
+test("kindsScheduledAtHour: plan_day fires at hour 7 only", () => {
+  assert.deepEqual(kindsScheduledAtHour(3, 7), ["plan_day"]);
   assert.deepEqual(kindsScheduledAtHour(3, 6), []);
   assert.deepEqual(kindsScheduledAtHour(3, 8), []);
-});
-
-test("kindsScheduledAtHour: uncomfortable_rep only fires at 4 PM on weekdays (1-5)", () => {
-  assert.deepEqual(kindsScheduledAtHour(1, 16), ["uncomfortable_rep"]);
-  assert.deepEqual(kindsScheduledAtHour(5, 16), ["uncomfortable_rep"]);
-  assert.deepEqual(kindsScheduledAtHour(6, 16), []);
-  assert.deepEqual(kindsScheduledAtHour(7, 16), []);
 });
 
 test("kindsScheduledAtHour: weekly_review only fires Friday at 5 PM", () => {
@@ -37,7 +30,7 @@ test("kindsScheduledAtHour: an hour with nothing scheduled returns an empty list
 
 test("notificationContent routes weekly_review to /week/review and everything else to a sensible page", () => {
   assert.equal(notificationContent("weekly_review").url, "/week/review");
-  assert.equal(notificationContent("today_priority").url, "/today");
+  assert.equal(notificationContent("plan_day").url, "/schedule/plan");
 });
 
 test("isNotificationEnabled defaults to true when prefs are missing or the key is absent", () => {

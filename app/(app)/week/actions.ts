@@ -7,8 +7,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/supabase/profile";
 import { getWeekStartDateString, getWeekEnd, getLocalDateString, DEFAULT_TIMEZONE } from "@/lib/dates";
-import { computeWeekScore, computeReviewStreak, labelForScore, type ScoreBreakdownRow } from "@/lib/score";
+import { computeWeekScore, computeReviewStreak, labelForScore, type ScoreBreakdownRow, type DayTodoStat } from "@/lib/score";
 import type { Database, Json } from "@/lib/supabase/types";
+import type { AppDatabase } from "@/lib/app-database";
 
 async function getTimezone() {
   const profile = await getProfile();
@@ -20,24 +21,18 @@ function weekEndString(weekStart: string): string {
 }
 
 async function computeLiveWeekScore(supabase: SupabaseClient<Database>, weekStart: string, weekEnd: string) {
-  const [{ data: habits }, { data: logs }] = await Promise.all([
-    supabase.from("habits").select("id, name, days_of_week").eq("active", true),
-    supabase.from("habit_logs").select("habit_id, date").eq("done", true).gte("date", weekStart).lte("date", weekEnd),
-  ]);
+  const db = supabase as unknown as SupabaseClient<AppDatabase>;
+  const { data: todos } = await db.from("todos").select("date, done").gte("date", weekStart).lte("date", weekEnd);
 
-  const doneByHabit = new Map<string, number>();
-  for (const log of logs ?? []) {
-    doneByHabit.set(log.habit_id, (doneByHabit.get(log.habit_id) ?? 0) + 1);
+  const byDate = new Map<string, DayTodoStat>();
+  for (const todo of todos ?? []) {
+    const stat = byDate.get(todo.date) ?? { date: todo.date, total: 0, done: 0 };
+    stat.total++;
+    if (todo.done) stat.done++;
+    byDate.set(todo.date, stat);
   }
 
-  const habitStats = (habits ?? []).map((h) => ({
-    habitId: h.id,
-    name: h.name,
-    scheduledDays: h.days_of_week.length,
-    doneDays: doneByHabit.get(h.id) ?? 0,
-  }));
-
-  return computeWeekScore(habitStats);
+  return computeWeekScore([...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)));
 }
 
 export type CurrentWeekScore = {
@@ -180,7 +175,7 @@ export async function submitReview(weekStart: string, answers: ReviewAnswers) {
 }
 
 // Stand-in for Phase 9's daily cron route: closes any past week that has no
-// review yet, scoring it from that week's habit_logs, with auto_closed = true.
+// review yet, scoring it from that week's to-dos, with auto_closed = true.
 export async function closeUnreviewedWeeks() {
   const supabase = await createClient();
   const timeZone = await getTimezone();

@@ -9,9 +9,10 @@ import {
   DEFAULT_TIMEZONE,
 } from "@/lib/dates";
 import { kindsScheduledAtHour, notificationContent, isNotificationEnabled } from "@/lib/notifications";
-import { computeWeekScore } from "@/lib/score";
+import { computeWeekScore, type DayTodoStat } from "@/lib/score";
 import { syncGoogleCalendarForUser } from "@/lib/google";
 import type { Database, Json } from "@/lib/supabase/types";
+import type { AppDatabase } from "@/lib/app-database";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 webpush.setVapidDetails(
@@ -47,7 +48,7 @@ type QueueItem = { refId: string; content: { title: string; body: string; url: s
 
 // Which condition (per §3.9) gates each notification kind, evaluated fresh
 // every hour rather than stored — same "derived, not stored" shape as
-// habit streaks, goal progress, and the week score.
+// goal progress and the week score.
 async function itemsForKind(
   admin: Admin,
   userId: string,
@@ -55,32 +56,14 @@ async function itemsForKind(
   todayStr: string
 ): Promise<QueueItem[]> {
   switch (kind) {
-    case "today_priority": {
-      const { data } = await admin
-        .from("daily_entries")
-        .select("priority_text")
+    case "plan_day": {
+      const { count } = await (admin as unknown as SupabaseClient<AppDatabase>)
+        .from("todos")
+        .select("id", { count: "exact", head: true })
         .eq("user_id", userId)
-        .eq("date", todayStr)
-        .maybeSingle();
-      if (data?.priority_text) return [];
-      return [{ refId: "", content: notificationContent("today_priority") }];
-    }
-    case "uncomfortable_rep": {
-      const { data: habit } = await admin
-        .from("habits")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("name", "Uncomfortable rep")
-        .maybeSingle();
-      if (!habit) return [];
-      const { data: log } = await admin
-        .from("habit_logs")
-        .select("done")
-        .eq("habit_id", habit.id)
-        .eq("date", todayStr)
-        .maybeSingle();
-      if (log?.done) return [];
-      return [{ refId: "", content: notificationContent("uncomfortable_rep") }];
+        .eq("date", todayStr);
+      if (count) return [];
+      return [{ refId: "", content: notificationContent("plan_day") }];
     }
     case "daily_review": {
       const { data } = await admin
@@ -98,30 +81,22 @@ async function itemsForKind(
 }
 
 async function computeUserWeekScore(admin: Admin, userId: string, weekStart: string, weekEnd: string) {
-  const [{ data: habits }, { data: logs }] = await Promise.all([
-    admin.from("habits").select("id, name, days_of_week").eq("user_id", userId).eq("active", true),
-    admin
-      .from("habit_logs")
-      .select("habit_id, date")
-      .eq("user_id", userId)
-      .eq("done", true)
-      .gte("date", weekStart)
-      .lte("date", weekEnd),
-  ]);
+  const { data: todos } = await (admin as unknown as SupabaseClient<AppDatabase>)
+    .from("todos")
+    .select("date, done")
+    .eq("user_id", userId)
+    .gte("date", weekStart)
+    .lte("date", weekEnd);
 
-  const doneByHabit = new Map<string, number>();
-  for (const log of logs ?? []) {
-    doneByHabit.set(log.habit_id, (doneByHabit.get(log.habit_id) ?? 0) + 1);
+  const byDate = new Map<string, DayTodoStat>();
+  for (const todo of todos ?? []) {
+    const stat = byDate.get(todo.date) ?? { date: todo.date, total: 0, done: 0 };
+    stat.total++;
+    if (todo.done) stat.done++;
+    byDate.set(todo.date, stat);
   }
 
-  const habitStats = (habits ?? []).map((h) => ({
-    habitId: h.id,
-    name: h.name,
-    scheduledDays: h.days_of_week.length,
-    doneDays: doneByHabit.get(h.id) ?? 0,
-  }));
-
-  return computeWeekScore(habitStats);
+  return computeWeekScore([...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)));
 }
 
 // Same auto-close semantics as the manual "Close unreviewed weeks" button

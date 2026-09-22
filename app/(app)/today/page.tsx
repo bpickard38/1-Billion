@@ -1,32 +1,27 @@
-import { parseISO, subDays, format } from "date-fns";
 import Link from "next/link";
 import { GraduationCap } from "lucide-react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import PageTitle from "@/components/PageTitle";
 import HeaderStrip from "@/components/today/HeaderStrip";
-import PriorityCard from "@/components/today/PriorityCard";
-import HabitList from "@/components/today/HabitList";
-import AddHabitButton from "@/components/today/AddHabitButton";
+import TodoList from "@/components/today/TodoList";
 import ScheduleSection from "@/components/today/ScheduleSection";
 import DailyReviewSheet from "@/components/today/DailyReviewSheet";
 import WeekStreakCard from "@/components/today/WeekStreakCard";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/supabase/profile";
-import { getLocalDateString, getLocalWeekday, DEFAULT_TIMEZONE } from "@/lib/dates";
-import { computeHabitStreak } from "@/lib/streaks";
-import { getGoalChain, computeProgressPct } from "@/lib/goals";
+import { getLocalDateString, DEFAULT_TIMEZONE } from "@/lib/dates";
+import { computeProgressPct } from "@/lib/goals";
 import { materializeTodaySchedule } from "./actions";
 import { getCurrentWeekScore } from "@/app/(app)/week/actions";
-
-const STREAK_LOOKBACK_DAYS = 370;
+import type { AppDatabase } from "@/lib/app-database";
 
 export default async function TodayPage() {
   const supabase = await createClient();
+  const db = supabase as unknown as SupabaseClient<AppDatabase>;
 
   const profile = await getProfile();
   const timezone = profile?.timezone ?? DEFAULT_TIMEZONE;
   const today = getLocalDateString(new Date(), timezone);
-  const weekday = getLocalWeekday(new Date(), timezone);
-  const streakCutoff = format(subDays(parseISO(today), STREAK_LOOKBACK_DAYS), "yyyy-MM-dd");
 
   await materializeTodaySchedule();
 
@@ -34,11 +29,8 @@ export default async function TodayPage() {
 
   const [
     { data: monthGoal },
-    { data: pickableGoals },
     { data: dailyEntry },
-    { data: habits },
-    { data: todayLogs },
-    { data: doneLogHistory },
+    { data: todos },
     { data: scheduleBlocks },
   ] = await Promise.all([
     supabase
@@ -48,26 +40,8 @@ export default async function TodayPage() {
       .order("starts_on", { ascending: false })
       .limit(1)
       .maybeSingle(),
-    supabase
-      .from("goals")
-      .select("id, title, level")
-      .in("level", ["week", "month"])
-      .eq("status", "active")
-      .order("level")
-      .order("sort"),
-    supabase.from("daily_entries").select("*").eq("date", today).maybeSingle(),
-    supabase
-      .from("habits")
-      .select("id, name, days_of_week")
-      .eq("active", true)
-      .contains("days_of_week", [weekday])
-      .order("sort"),
-    supabase.from("habit_logs").select("habit_id, done").eq("date", today),
-    supabase
-      .from("habit_logs")
-      .select("habit_id, date")
-      .eq("done", true)
-      .gte("date", streakCutoff),
+    supabase.from("daily_entries").select("submitted_at").eq("date", today).maybeSingle(),
+    db.from("todos").select("id, title, done, sort").eq("date", today).order("sort"),
     supabase
       .from("schedule_blocks")
       .select("id, start_at, end_at, title, category, done")
@@ -91,31 +65,12 @@ export default async function TodayPage() {
     monthProgressPct = computeProgressPct(done ?? 0, total ?? 0);
   }
 
-  const chain = await getGoalChain(supabase, dailyEntry?.priority_goal_id ?? null);
   const weekScore = await weekScorePromise;
-
-  const habitDone: Record<string, boolean> = {};
-  for (const log of todayLogs ?? []) habitDone[log.habit_id] = log.done;
-
-  const doneDatesByHabit = new Map<string, Set<string>>();
-  for (const log of doneLogHistory ?? []) {
-    if (!doneDatesByHabit.has(log.habit_id)) doneDatesByHabit.set(log.habit_id, new Set());
-    doneDatesByHabit.get(log.habit_id)!.add(log.date);
-  }
-
-  const streaks: Record<string, number> = {};
-  for (const habit of habits ?? []) {
-    streaks[habit.id] = computeHabitStreak(
-      doneDatesByHabit.get(habit.id) ?? new Set(),
-      habit.days_of_week,
-      today
-    );
-  }
 
   return (
     <>
       <PageTitle>Today</PageTitle>
-      <Link href="/schedule" className="mb-4 block rounded-lg bg-accent px-4 py-3 text-center text-sm font-semibold text-bg">Daily Schedule</Link>
+      <Link href="/schedule/plan" className="mb-4 block rounded-lg bg-accent px-4 py-3 text-center text-sm font-semibold text-bg">Plan today</Link>
 
       <div className="flex flex-col gap-4">
         <HeaderStrip
@@ -124,20 +79,12 @@ export default async function TodayPage() {
           monthProgressPct={monthProgressPct}
         />
 
-        <PriorityCard
-          initialText={dailyEntry?.priority_text ?? ""}
-          initialGoalId={dailyEntry?.priority_goal_id ?? null}
-          pickableGoals={pickableGoals ?? []}
-          chain={chain}
-        />
+        <section className="flex flex-col gap-2">
+          <h2 className="text-sm font-semibold text-muted">To-do</h2>
+          <TodoList todos={todos ?? []} />
+        </section>
 
         <ScheduleSection blocks={scheduleBlocks ?? []} timeZone={timezone} />
-
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-semibold text-muted">Habits</h2>
-          <HabitList habits={habits ?? []} initialDone={habitDone} streaks={streaks} />
-          <AddHabitButton />
-        </section>
 
         <Link
           href="/skills"

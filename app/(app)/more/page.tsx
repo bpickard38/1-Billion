@@ -3,7 +3,6 @@ import PageTitle from "@/components/PageTitle";
 import CloseUnreviewedWeeksButton from "@/components/more/CloseUnreviewedWeeksButton";
 import PushNotificationSettings from "@/components/more/PushNotificationSettings";
 import GoogleCalendarSettings from "@/components/more/GoogleCalendarSettings";
-import HabitManager from "@/components/more/HabitManager";
 import { logout } from "@/app/login/actions";
 import { getNotificationPrefs } from "@/app/(app)/more/notifications/actions";
 import { createClient } from "@/lib/supabase/server";
@@ -18,10 +17,10 @@ export default async function MorePage({
     searchParams,
     createClient(),
   ]);
-  const [{ data: googleTokens }, { data: habits }] = await Promise.all([
-    supabase.from("google_tokens").select("id, last_synced_at, last_sync_error").maybeSingle(),
-    supabase.from("habits").select("id, name, days_of_week, active").order("sort"),
-  ]);
+  const { data: googleTokens } = await supabase
+    .from("google_tokens")
+    .select("id, last_synced_at, last_sync_error")
+    .maybeSingle();
   const googleError = typeof google_error === "string" ? google_error : null;
 
   return (
@@ -37,12 +36,7 @@ export default async function MorePage({
         </Link>
       </nav>
 
-      <p className="mb-2 text-xs uppercase tracking-wide text-muted">Habits</p>
-      <div className="mb-6">
-        <HabitManager habits={habits ?? []} />
-      </div>
-
-      <p className="mb-2 mt-6 text-xs uppercase tracking-wide text-muted">Week</p>
+      <p className="mb-2 text-xs uppercase tracking-wide text-muted">Week</p>
       <div className="mb-6 flex flex-col gap-2">
         <CloseUnreviewedWeeksButton />
       </div>

@@ -15,7 +15,7 @@ export async function planningContext() {
 }
 
 export function databaseError(error: { message: string; code?: string } | null) {
-  if (error) throw new Error(error.code === "PGRST205" || error.code === "42P01" || error.code === "PGRST202" ? "Planner setup is incomplete. Apply database migration 0012 first." : "Could not save or load planning data. Please try again.");
+  if (error) throw new Error(error.code === "PGRST205" || error.code === "42P01" || error.code === "PGRST202" ? "Planner setup is incomplete. Apply the latest database migrations first." : "Could not save or load planning data. Please try again.");
 }
 
 export async function actionResult<T>(fn: () => Promise<T>): Promise<{ data: T; error?: never } | { error: string; data?: never }> {

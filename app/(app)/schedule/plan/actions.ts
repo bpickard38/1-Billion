@@ -11,7 +11,7 @@ import { syncGoogleCalendarForUser, syncPlannedBlocks } from "@/lib/google";
 import { materializeBlocks } from "@/lib/schedule";
 import type { Json } from "@/lib/supabase/types";
 
-async function calendarContext(days: number) {
+export async function calendarContext(days: number) {
   const context = await planningContext();
   const { db, base, user, timeZone } = context;
   const date = getLocalDateString(new Date(), timeZone);

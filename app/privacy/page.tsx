@@ -18,7 +18,7 @@ export default function PrivacyPage() {
           <h2 className="text-base font-semibold">What we collect</h2>
           <p>
             An account (email + password) via Supabase Auth, and whatever you enter into the app
-            yourself: habits and habit check-ins, goals, daily schedule, weekly reviews, CRM
+            yourself: to-dos, goals, daily schedule and planning chat, weekly reviews, CRM
             contacts and interview notes, problem-database entries, ideas, and skill-tree progress.
           </p>
         </section>

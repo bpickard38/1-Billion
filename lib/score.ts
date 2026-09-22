@@ -1,13 +1,8 @@
 import { subDays, parseISO, format } from "date-fns";
 
-export type HabitWeekStat = {
-  habitId: string;
-  name: string;
-  scheduledDays: number;
-  doneDays: number;
-};
+export type DayTodoStat = { date: string; total: number; done: number };
 
-export type ScoreBreakdownRow = { habitId: string; name: string; pct: number };
+export type ScoreBreakdownRow = { date: string; label: string; pct: number };
 
 export type WeekScore = {
   score: number;
@@ -24,29 +19,27 @@ export function labelForScore(score: number): string {
 }
 
 /**
- * Weekly score, habit-only (metrics were cut 2026-09-05): total habit-days
- * done ÷ total habit-days scheduled across every active habit that week —
- * habits scheduled more often count for more of the score, not weighted
- * separately. `scheduledDays` per habit is `days_of_week.length`, since
- * every ISO weekday appears exactly once in any Monday-Sunday week.
+ * Weekly score, to-do only (habits were cut 2026-09-21): total to-dos done
+ * ÷ total to-dos created that week, across every day. A day with more
+ * to-dos counts for more of the score, not weighted separately per day.
  */
-export function computeWeekScore(habitStats: readonly HabitWeekStat[]): WeekScore {
-  const totalScheduled = habitStats.reduce((sum, h) => sum + h.scheduledDays, 0);
-  const totalDone = habitStats.reduce((sum, h) => sum + h.doneDays, 0);
-  const score = totalScheduled > 0 ? Math.round((totalDone / totalScheduled) * 100) : 0;
+export function computeWeekScore(dayStats: readonly DayTodoStat[]): WeekScore {
+  const totalTodos = dayStats.reduce((sum, d) => sum + d.total, 0);
+  const totalDone = dayStats.reduce((sum, d) => sum + d.done, 0);
+  const score = totalTodos > 0 ? Math.round((totalDone / totalTodos) * 100) : 0;
 
-  const breakdown: ScoreBreakdownRow[] = habitStats.map((h) => ({
-    habitId: h.habitId,
-    name: h.name,
-    pct: h.scheduledDays > 0 ? Math.round((h.doneDays / h.scheduledDays) * 100) : 0,
+  const breakdown: ScoreBreakdownRow[] = dayStats.map((d) => ({
+    date: d.date,
+    label: format(parseISO(d.date), "EEE"),
+    pct: d.total > 0 ? Math.round((d.done / d.total) * 100) : 0,
   }));
 
-  const ratedRows = breakdown.filter((_, i) => habitStats[i].scheduledDays > 0);
+  const ratedRows = breakdown.filter((_, i) => dayStats[i].total > 0);
   const worst = ratedRows.reduce<ScoreBreakdownRow | null>(
     (min, row) => (min === null || row.pct < min.pct ? row : min),
     null
   );
-  const biggestIssue = worst && worst.pct < 100 ? `${worst.name} (${worst.pct}%)` : null;
+  const biggestIssue = worst && worst.pct < 100 ? `${worst.label} (${worst.pct}%)` : null;
 
   return { score, label: labelForScore(score), breakdown, biggestIssue };
 }
@@ -59,9 +52,9 @@ const MAX_STREAK_LOOKBACK_WEEKS = 520; // ~10 years, just a sane upper bound
 
 /**
  * Consecutive closed, non-auto-closed weeks ending at `currentWeekStart`.
- * Same shape as `computeHabitStreak`: if the current week isn't closed yet,
- * that doesn't break the streak (and doesn't count) — it just means we
- * start counting from the week before it.
+ * Same shape as before: if the current week isn't closed yet, that doesn't
+ * break the streak (and doesn't count) — it just means we start counting
+ * from the week before it.
  */
 export function computeReviewStreak(
   closedWeekStarts: ReadonlySet<string>,

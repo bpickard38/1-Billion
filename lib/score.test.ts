@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { computeWeekScore, labelForScore, computeReviewStreak } from "./score.ts";
 
-test("computeWeekScore is 0 with no active habits (no division by zero)", () => {
+test("computeWeekScore is 0 with no to-dos that week (no division by zero)", () => {
   const result = computeWeekScore([]);
   assert.equal(result.score, 0);
   assert.equal(result.label, "Rough week");
@@ -10,42 +10,42 @@ test("computeWeekScore is 0 with no active habits (no division by zero)", () => 
   assert.equal(result.biggestIssue, null);
 });
 
-test("computeWeekScore weights by how often a habit is scheduled, not equally per habit", () => {
-  // Habit A scheduled 6x/week, all done. Habit B scheduled 1x/week, missed.
-  // Overall: 6 done / 7 scheduled = 86%, not the 50% a per-habit average would give.
+test("computeWeekScore weights by how many to-dos a day had, not equally per day", () => {
+  // Monday had 6 to-dos, all done. Tuesday had 1, missed.
+  // Overall: 6 done / 7 total = 86%, not the 50% a per-day average would give.
   const result = computeWeekScore([
-    { habitId: "a", name: "Deep work", scheduledDays: 6, doneDays: 6 },
-    { habitId: "b", name: "Uncomfortable rep", scheduledDays: 1, doneDays: 0 },
+    { date: "2026-09-21", total: 6, done: 6 },
+    { date: "2026-09-22", total: 1, done: 0 },
   ]);
   assert.equal(result.score, 86);
   assert.equal(result.label, "Strong week");
 });
 
-test("computeWeekScore breakdown gives each habit its own %, and flags the worst as biggestIssue", () => {
+test("computeWeekScore breakdown gives each day its own %, and flags the worst as biggestIssue", () => {
   const result = computeWeekScore([
-    { habitId: "a", name: "Workout", scheduledDays: 7, doneDays: 7 },
-    { habitId: "b", name: "Read", scheduledDays: 7, doneDays: 3 },
+    { date: "2026-09-21", total: 7, done: 7 },
+    { date: "2026-09-22", total: 7, done: 3 },
   ]);
   assert.deepEqual(result.breakdown, [
-    { habitId: "a", name: "Workout", pct: 100 },
-    { habitId: "b", name: "Read", pct: 43 },
+    { date: "2026-09-21", label: "Mon", pct: 100 },
+    { date: "2026-09-22", label: "Tue", pct: 43 },
   ]);
-  assert.equal(result.biggestIssue, "Read (43%)");
+  assert.equal(result.biggestIssue, "Tue (43%)");
 });
 
-test("computeWeekScore has no biggestIssue when every habit hit 100%", () => {
-  const result = computeWeekScore([{ habitId: "a", name: "Workout", scheduledDays: 7, doneDays: 7 }]);
+test("computeWeekScore has no biggestIssue when every day hit 100%", () => {
+  const result = computeWeekScore([{ date: "2026-09-21", total: 7, done: 7 }]);
   assert.equal(result.score, 100);
   assert.equal(result.biggestIssue, null);
 });
 
-test("computeWeekScore ignores a habit scheduled zero days that week for the breakdown/biggestIssue calc", () => {
+test("computeWeekScore ignores a day with zero to-dos for the breakdown/biggestIssue calc", () => {
   const result = computeWeekScore([
-    { habitId: "a", name: "Workout", scheduledDays: 7, doneDays: 7 },
-    { habitId: "b", name: "New habit", scheduledDays: 0, doneDays: 0 },
+    { date: "2026-09-21", total: 7, done: 7 },
+    { date: "2026-09-22", total: 0, done: 0 },
   ]);
-  assert.equal(result.breakdown.find((r) => r.habitId === "b")?.pct, 0);
-  assert.equal(result.biggestIssue, null); // the 0-scheduled habit isn't a real "issue"
+  assert.equal(result.breakdown.find((r) => r.date === "2026-09-22")?.pct, 0);
+  assert.equal(result.biggestIssue, null); // a day with nothing planned isn't a real "issue"
 });
 
 test("labelForScore bands", () => {

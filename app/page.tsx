@@ -19,7 +19,7 @@ export default async function Home() {
         <h1 className="text-4xl font-bold tracking-tight mb-1">1 Billion</h1>
         <p className="text-muted mb-6">The app is not the mission.</p>
         <p className="text-sm leading-relaxed mb-8">
-          A personal founder OS: habits, daily schedule, goal tracking, a customer research CRM,
+          A personal founder OS: a daily planning chat and to-do list, goal tracking, a customer research CRM,
           and a weekly review — built to make execution happen, not to be the thing itself.
         </p>
         <div className="flex flex-col gap-3">

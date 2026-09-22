@@ -1,7 +1,7 @@
 import { LEVEL_LABEL, type ChainLink, type GoalLevel } from "@/lib/goals";
 
 // Shared trace-back rendering: deepest (starting) goal first, up to the Dream.
-// Used by Today's PriorityCard and the Goals tree's per-node "Path to Dream".
+// Used by the Goals tree's per-node "Path to Dream".
 export default function GoalChain({ chain }: { chain: ChainLink[] }) {
   if (chain.length === 0) return null;
 

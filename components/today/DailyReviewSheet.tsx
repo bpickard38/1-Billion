@@ -14,9 +14,8 @@ export default function DailyReviewSheet({
     async (prev: { key: number }, formData: FormData) => {
       const accomplished = String(formData.get("accomplished") ?? "");
       const learned = String(formData.get("learned") ?? "");
-      const tomorrowPriority = String(formData.get("tomorrowPriority") ?? "");
 
-      await submitDailyReview({ accomplished, learned, tomorrowPriority });
+      await submitDailyReview({ accomplished, learned });
 
       startTransition(() => setIsOpen(false));
       return { key: prev.key + 1 };
@@ -67,14 +66,6 @@ export default function DailyReviewSheet({
                   className="rounded border border-border bg-transparent p-2 text-sm"
                 />
               </label>
-              <label className="flex flex-col gap-1 text-sm">
-                Tomorrow&apos;s #1 task
-                <input
-                  name="tomorrowPriority"
-                  className="rounded border border-border bg-transparent p-2 text-sm"
-                />
-              </label>
-
               <button
                 type="submit"
                 disabled={isPending}
