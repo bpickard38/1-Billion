@@ -6,6 +6,10 @@ A mobile-first productivity app (installable iPhone PWA) that turns long-term go
 
 Best viewed on a phone (or DevTools at iPhone size).
 
+<p align="center">
+  <img src="docs/screenshots/demo.gif" width="300" alt="Trying the demo: tap Try the demo, chat with the AI planner, add the plan to today">
+</p>
+
 ## Why I built it
 
 I wanted one place that connects the big goal to what I do at 9am today. Off-the-shelf tools split goals, calendar, to-dos and school deadlines across four apps. I built this for myself and use it every day on my phone.

@@ -25,7 +25,7 @@ export default function PlanningChat({ initial }: { initial: { date: string; mes
   const [confirmedId, setConfirmedId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const endRef = useRef<HTMLDivElement>(null);
-  const typing = isPending && confirmingId === null;
+  const [typing, setTyping] = useState(false);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -38,8 +38,10 @@ export default function PlanningChat({ initial }: { initial: { date: string; mes
     setText("");
     const optimisticId = `pending-${Date.now()}`;
     setMessages((m) => [...m, { id: optimisticId, role: "user", content: trimmed, payload: null }]);
+    setTyping(true);
     startTransition(async () => {
       const result = await sendPlanningMessage(initial.date, trimmed);
+      setTyping(false);
       if (result.error) {
         setError(result.error);
         setMessages((m) => m.filter((msg) => msg.id !== optimisticId));
