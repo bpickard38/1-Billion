@@ -30,6 +30,7 @@ function sameDaySet(a: number[], b: number[]): boolean {
 // to the whole series (see today/actions.ts#upsertScheduleBlock).
 export default function BlockEditor({
   blockId,
+  date,
   initialStartTime,
   initialEndTime,
   initialTitle = "",
@@ -39,6 +40,7 @@ export default function BlockEditor({
   onClose,
 }: {
   blockId?: string;
+  date?: string;
   initialStartTime: string;
   initialEndTime: string;
   initialTitle?: string;
@@ -67,6 +69,7 @@ export default function BlockEditor({
     startTransition(async () => {
       await upsertScheduleBlock({
         id: blockId,
+        date,
         startTime,
         endTime,
         title: title.trim(),

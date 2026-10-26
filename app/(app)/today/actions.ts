@@ -167,6 +167,8 @@ export async function toggleScheduleBlockDone(blockId: string, done: boolean) {
 
 export type ScheduleBlockInput = {
   id?: string;
+  // YYYY-MM-DD the block lives on (Schedule tab day navigation); today if omitted.
+  date?: string;
   startTime: string;
   endTime: string;
   title: string;
@@ -197,7 +199,7 @@ export async function upsertScheduleBlock(input: ScheduleBlockInput) {
   if (!user) return;
 
   const timeZone = await getTimezone(supabase);
-  const date = await todayString(supabase);
+  const date = input.date && /^\d{4}-\d{2}-\d{2}$/.test(input.date) ? input.date : await todayString(supabase);
   const startAt = localTimeToInstant(date, input.startTime, timeZone).toISOString();
   const endAt = localTimeToInstant(date, input.endTime, timeZone).toISOString();
   // See the ScheduleBlockInput comment: undefined vs [] must stay distinct.

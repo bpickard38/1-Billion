@@ -43,6 +43,7 @@ type PendingDrag = {
   originalTop: number;
   durationMin: number;
   block: Block;
+  date: string;
 };
 
 type ActiveDrag = PendingDrag & { offsetTop: number };
@@ -77,15 +78,26 @@ function snapMinutesToTop(minutes: number, durationMin: number): number {
 // Google-Calendar-style day view: hourly rows, tap an empty slot to add a
 // block, tap a block to edit or delete it, press-and-drag a block to
 // reschedule it — mouse drags as soon as it moves, touch needs a brief hold
-// first (a plain scroll or tap shouldn't get mistaken for a move). Today's
-// schedule_blocks only — no date navigation yet.
-export default function DayCalendar({ blocks, timeZone }: { blocks: Block[]; timeZone: string }) {
+// first (a plain scroll or tap shouldn't get mistaken for a move). Shows one
+// day's schedule_blocks; edits and drags save to that `date`.
+export default function DayCalendar({
+  blocks,
+  timeZone,
+  date,
+  isToday,
+}: {
+  blocks: Block[];
+  timeZone: string;
+  date: string;
+  isToday: boolean;
+}) {
   const [now, setNow] = useState(() => new Date());
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [drag, setDrag] = useState<ActiveDrag | null>(null);
   const [, startTransition] = useTransition();
   const nowLineRef = useRef<HTMLDivElement>(null);
-  const scrolledRef = useRef(false);
+  const morningRef = useRef<HTMLDivElement>(null);
+  const scrolledRef = useRef<string | null>(null);
   const pendingRef = useRef<PendingDrag | null>(null);
   const longPressTimerRef = useRef<number | null>(null);
   const didDragRef = useRef(false);
@@ -95,11 +107,14 @@ export default function DayCalendar({ blocks, timeZone }: { blocks: Block[]; tim
     return () => clearInterval(interval);
   }, []);
 
+  // Today: center on the now line. Other days: start at 7 AM. Re-runs when
+  // the arrows switch days.
   useEffect(() => {
-    if (scrolledRef.current) return;
-    scrolledRef.current = true;
-    nowLineRef.current?.scrollIntoView({ block: "center" });
-  }, []);
+    if (scrolledRef.current === date) return;
+    scrolledRef.current = date;
+    if (isToday) nowLineRef.current?.scrollIntoView({ block: "center" });
+    else morningRef.current?.scrollIntoView({ block: "start" });
+  }, [date, isToday]);
 
   const nowMinutes = localMinutesSinceMidnight(now, timeZone);
 
@@ -140,6 +155,7 @@ export default function DayCalendar({ blocks, timeZone }: { blocks: Block[]; tim
     startTransition(async () => {
       await upsertScheduleBlock({
         id: active.blockId,
+        date: active.date,
         startTime,
         endTime,
         title: active.block.title,
@@ -239,6 +255,7 @@ export default function DayCalendar({ blocks, timeZone }: { blocks: Block[]; tim
         originalTop: top,
         durationMin,
         block,
+        date,
       };
       pendingRef.current = pending;
 
@@ -255,19 +272,22 @@ export default function DayCalendar({ blocks, timeZone }: { blocks: Block[]; tim
 
   return (
     <div className="flex flex-col gap-3">
-      <button
-        type="button"
-        onClick={() =>
-          startTransition(async () => {
-            await saveTodayAsTemplate();
-          })
-        }
-        className="self-end rounded-lg border border-accent/60 px-3 py-1.5 text-xs text-accent"
-      >
-        Save today as template
-      </button>
+      {isToday && (
+        <button
+          type="button"
+          onClick={() =>
+            startTransition(async () => {
+              await saveTodayAsTemplate();
+            })
+          }
+          className="self-end rounded-lg border border-accent/60 px-3 py-1.5 text-xs text-accent"
+        >
+          Save today as template
+        </button>
+      )}
 
       <div className="relative" style={{ height: `${24 * HOUR_HEIGHT}px` }}>
+        <div ref={morningRef} className="pointer-events-none absolute inset-x-0 scroll-mt-28" style={{ top: `${7 * HOUR_HEIGHT}px` }} />
         {HOURS.map((hour) => (
           <button
             key={hour}
@@ -322,19 +342,22 @@ export default function DayCalendar({ blocks, timeZone }: { blocks: Block[]; tim
           );
         })}
 
-        <div
-          ref={nowLineRef}
-          className="pointer-events-none absolute inset-x-0 flex items-center"
-          style={{ top: `${(nowMinutes / 60) * HOUR_HEIGHT}px` }}
-        >
-          <span className="ml-10 h-2 w-2 shrink-0 rounded-full bg-bad" />
-          <span className="h-px flex-1 bg-bad" />
-        </div>
+        {isToday && (
+          <div
+            ref={nowLineRef}
+            className="pointer-events-none absolute inset-x-0 flex items-center"
+            style={{ top: `${(nowMinutes / 60) * HOUR_HEIGHT}px` }}
+          >
+            <span className="ml-10 h-2 w-2 shrink-0 rounded-full bg-bad" />
+            <span className="h-px flex-1 bg-bad" />
+          </div>
+        )}
       </div>
 
       {editing && (
         <BlockEditor
           blockId={editing.blockId}
+          date={date}
           initialStartTime={editing.startTime}
           initialEndTime={editing.endTime}
           initialTitle={editing.title}
