@@ -710,6 +710,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      seed_demo: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never

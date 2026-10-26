@@ -18,15 +18,19 @@ export async function login(formData: FormData) {
   redirect("/today");
 }
 
-// Shared public demo account (credentials are in the README on purpose).
+// "Try the demo": every visitor gets their own throwaway anonymous account,
+// filled with sample data by seed_demo() (0014_demo_seed.sql). The cron
+// tick deletes anonymous accounts after 24h.
 export async function demoLogin() {
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
-    email: "demo@1billion.app",
-    password: "OneBillionDemo!",
-  });
-
+  const { error } = await supabase.auth.signInAnonymously();
   if (error) redirect("/login?error=demo");
+
+  const { error: seedError } = await supabase.rpc("seed_demo");
+  if (seedError) {
+    await supabase.auth.signOut();
+    redirect("/login?error=demo");
+  }
 
   redirect("/today");
 }

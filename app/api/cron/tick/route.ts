@@ -152,6 +152,8 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   const now = new Date();
 
+  const demoAccountsDeleted = await deleteExpiredDemoAccounts(admin, now);
+
   const { data: profiles } = await admin.from("profiles").select("id, timezone, notification_prefs");
 
   let notificationsSent = 0;
@@ -199,5 +201,24 @@ export async function POST(request: Request) {
     }
   }
 
-  return Response.json({ notificationsSent, usersWithAutoCloseChecked: weeksClosed });
+  return Response.json({ notificationsSent, usersWithAutoCloseChecked: weeksClosed, demoAccountsDeleted });
+}
+
+// "Try the demo" accounts are anonymous users; drop them after 24h. Their
+// rows in every public table go with them (user_id ... on delete cascade).
+async function deleteExpiredDemoAccounts(admin: Admin, now: Date) {
+  const cutoff = now.getTime() - 24 * 60 * 60 * 1000;
+  let deleted = 0;
+  for (let page = 1; ; page++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error || !data) break;
+    for (const user of data.users) {
+      if (user.is_anonymous && Date.parse(user.created_at) < cutoff) {
+        const { error: deleteError } = await admin.auth.admin.deleteUser(user.id);
+        if (!deleteError) deleted++;
+      }
+    }
+    if (data.users.length < 1000) break;
+  }
+  return deleted;
 }

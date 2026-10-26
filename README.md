@@ -2,7 +2,7 @@
 
 A mobile-first productivity app (installable iPhone PWA) that turns long-term goals into a daily plan: an AI planning chat builds today's to-do list and schedule, syncs it two-way with Google Calendar, pulls deadlines from Canvas, and scores every week.
 
-**[Live demo → 1billion.vercel.app/login](https://1billion.vercel.app/login)**: tap **Try the demo** (or sign in with `demo@1billion.app` / `OneBillionDemo!`)
+**[Live demo → 1billion.vercel.app/login](https://1billion.vercel.app/login)**: tap **Try the demo** for your own private sandbox, pre-filled with sample data. No sign-up needed.
 
 Best viewed on a phone (or DevTools at iPhone size).
 
@@ -49,6 +49,7 @@ flowchart LR
 
 - **Two-way calendar sync without duplicates.** Each local block maps to a Google event ID through a unique index, so pushes are idempotent upserts, and edit conflicts resolve by last-modified-wins. I tracked down a Postgres `42P10` error (an `ON CONFLICT` target with no matching unique index) and fixed it in a dedicated migration.
 - **Data isolation by default.** Every table has Row-Level Security policies keyed on `auth.uid()`. Only the cron job uses the service-role key, and it runs on the server only.
+- **Self-cleaning demo sandboxes.** "Try the demo" signs each visitor in as a Supabase anonymous user. A Postgres function seeds sample data dated relative to today, refuses to run for non-anonymous accounts, and is covered by a PGlite test. The hourly cron deletes sandboxes after 24 hours, and their data cascade-deletes with them.
 - **Secrets encrypted at rest.** Canvas access tokens are stored with AES-256-GCM, and the user ID is bound as authenticated data so a token can't be swapped between accounts ([`lib/canvas-secret.ts`](lib/canvas-secret.ts)).
 - **AI output is validated rather than trusted.** The planner's responses are parsed against a Zod schema. Proposed blocks are confirmed through a Postgres function that rejects the draft if the calendar changed underneath it, so the AI can't silently double-book you.
 - **AI estimates, code schedules.** For Canvas work the model only estimates effort. A deterministic, unit-tested packer ([`lib/planner.ts`](lib/planner.ts)) fits sessions around existing commitments.
