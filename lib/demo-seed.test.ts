@@ -32,7 +32,9 @@ test("seed_demo: refuses real accounts, seeds anonymous ones relative to today, 
       const key = t === "profiles" ? "id" : "user_id";
       await db.exec(`alter table public.${t} enable row level security; create policy own on public.${t} for all to authenticated using (${key} = auth.uid()) with check (${key} = auth.uid());`);
     }
-    await db.exec(await readFile(new URL("../supabase/migrations/0014_demo_seed.sql", import.meta.url), "utf8"));
+    for (const file of ["0014_demo_seed.sql", "0015_demo_seed_goal_progress.sql"]) {
+      await db.exec(await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), "utf8"));
+    }
     await db.exec(`grant select, insert, update, delete on all tables in schema public to authenticated; set role authenticated;`);
 
     // A real (non-anonymous) account is refused and left untouched.
@@ -46,6 +48,9 @@ test("seed_demo: refuses real accounts, seeds anonymous ones relative to today, 
     const count = async (sql: string) => (await db.query<{ n: number }>(sql)).rows[0].n;
     const today = `(now() at time zone 'America/Denver')::date`;
     assert.equal(await count("select count(*)::int n from goals"), 5);
+    // One month goal (so Today's header shows it) with 2 of 3 weekly goals done = 67%.
+    assert.equal(await count("select count(*)::int n from goals where level = 'month'"), 1);
+    assert.equal(await count("select count(*)::int n from goals c join goals m on c.parent_id = m.id where m.level = 'month' and c.status = 'done'"), 2);
     assert.equal(await count(`select count(*)::int n from todos where date = ${today}`), 5);
     assert.equal(await count(`select count(distinct date)::int n from schedule_blocks`), 3);
     assert.equal(await count(`select count(*)::int n from schedule_blocks where date = ${today} + 1`), 4);

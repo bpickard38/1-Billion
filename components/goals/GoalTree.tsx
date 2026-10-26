@@ -120,7 +120,7 @@ function GoalNode({
           <span className="w-4 shrink-0" />
         )}
 
-        <button type="button" onClick={() => onEdit(goal)} className="flex-1 text-left">
+        <button type="button" onClick={() => onEdit(goal)} className="min-w-0 flex-1 text-left">
           <span className="block text-[10px] uppercase tracking-wide text-muted">
             {LEVEL_LABEL[goal.level as GoalLevel] ?? goal.level}
           </span>
