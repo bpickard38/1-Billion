@@ -2,7 +2,7 @@
 
 A mobile-first productivity app (installable iPhone PWA) that turns long-term goals into a daily plan: an AI planning chat builds today's to-do list and schedule, syncs it two-way with Google Calendar, pulls deadlines from Canvas, and scores every week.
 
-**[Live demo → 1billion.vercel.app](https://1billion.vercel.app)** · demo login: `demo@1billion.app` / `OneBillionDemo!`
+**[Live demo → 1billion.vercel.app/login](https://1billion.vercel.app/login)**: tap **Try the demo** (or sign in with `demo@1billion.app` / `OneBillionDemo!`)
 
 Best viewed on a phone (or DevTools at iPhone size).
 

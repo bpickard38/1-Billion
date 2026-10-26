@@ -1,8 +1,9 @@
-import { login } from "./actions";
+import { demoLogin, login } from "./actions";
 
 const messages: Record<string, string> = {
   missing: "Email and password required.",
   invalid: "Wrong email or password.",
+  demo: "Demo is unavailable right now.",
 };
 
 const notices: Record<string, string> = {
@@ -51,6 +52,15 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
             className="mt-2 rounded-lg bg-accent text-black font-semibold py-3 text-base active:opacity-80"
           >
             Sign in
+          </button>
+        </form>
+
+        <form action={demoLogin} className="mt-3">
+          <button
+            type="submit"
+            className="w-full rounded-lg border border-accent text-accent font-semibold py-3 text-base active:opacity-80"
+          >
+            Try the demo
           </button>
         </form>
 

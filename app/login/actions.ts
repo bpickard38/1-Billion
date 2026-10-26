@@ -18,6 +18,19 @@ export async function login(formData: FormData) {
   redirect("/today");
 }
 
+// Shared public demo account (credentials are in the README on purpose).
+export async function demoLogin() {
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword({
+    email: "demo@1billion.app",
+    password: "OneBillionDemo!",
+  });
+
+  if (error) redirect("/login?error=demo");
+
+  redirect("/today");
+}
+
 export async function logout() {
   const supabase = await createClient();
   await supabase.auth.signOut();
