@@ -4,7 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { actionResult, databaseError, planningContext } from "@/lib/planning-server";
-import { getLocalDateString, localTimeToInstant } from "@/lib/dates";
+import { getLocalDateString, instantToLocalTimeString, localTimeToInstant } from "@/lib/dates";
 import { CATEGORIES } from "@/lib/categories";
 import { chatTurn } from "@/lib/planning-chat-ai";
 import type { AppDatabase } from "@/lib/app-database";
@@ -60,13 +60,6 @@ export async function sendPlanningMessage(dateInput: string, textInput: string) 
       .order("created_at");
     databaseError(error);
 
-    const { data: userMsg, error: insertError } = await appDb
-      .from("planning_chat_messages")
-      .insert({ date, role: "user", content: text })
-      .select("id, role, content, payload, created_at")
-      .single();
-    databaseError(insertError);
-
     const { data: existingTodos, error: todosError } = await appDb
       .from("todos")
       .select("title")
@@ -75,10 +68,17 @@ export async function sendPlanningMessage(dateInput: string, textInput: string) 
       .order("sort");
     databaseError(todosError);
 
+    // Ask the AI before writing anything, so a failed call leaves no
+    // unanswered user message behind.
     const turn = await chatTurn({
       date,
       timeZone,
-      busy: busy.map((b) => ({ title: b.title, start_at: b.start_at, end_at: b.end_at })),
+      now: instantToLocalTimeString(new Date(), timeZone),
+      busy: busy.map((b) => ({
+        title: b.title,
+        start: instantToLocalTimeString(b.start_at, timeZone),
+        end: instantToLocalTimeString(b.end_at, timeZone),
+      })),
       existingTodos: (existingTodos ?? []).map((t) => t.title),
       history: [
         ...(history ?? []).map((h) => ({ role: h.role as "user" | "assistant", content: h.content })),
@@ -86,10 +86,30 @@ export async function sendPlanningMessage(dateInput: string, textInput: string) 
       ],
     });
 
-    const payload = turn.ready ? { ready: true, todos: turn.todos, blocks: turn.blocks } : null;
+    // The model sometimes proposes past or overlapping times anyway; drop
+    // those here so "Add to my day" can't fail on them later.
+    const blocks = turn.blocks.filter((b) => {
+      if (!proposedBlockSchema.safeParse(b).success) return false;
+      const start = localTimeToInstant(date, b.start, timeZone).getTime();
+      const end = localTimeToInstant(date, b.end, timeZone).getTime();
+      return start >= Date.now() && end > start && !busy.some((x) => Date.parse(x.start_at) < end && Date.parse(x.end_at) > start);
+    });
+    const dropped = turn.blocks.length - blocks.length;
+    const reply = turn.ready && dropped > 0
+      ? `${turn.reply}\n\n(Left out ${dropped} block${dropped === 1 ? "" : "s"} that ${dropped === 1 ? "was" : "were"} in the past or overlapped your calendar.)`
+      : turn.reply;
+    const payload = turn.ready ? { ready: true, todos: turn.todos, blocks } : null;
+
+    const { data: userMsg, error: insertError } = await appDb
+      .from("planning_chat_messages")
+      .insert({ date, role: "user", content: text })
+      .select("id, role, content, payload, created_at")
+      .single();
+    databaseError(insertError);
+
     const { data: assistantMsg, error: assistantError } = await appDb
       .from("planning_chat_messages")
-      .insert({ date, role: "assistant", content: turn.reply, payload: payload as unknown as Json })
+      .insert({ date, role: "assistant", content: reply, payload: payload as unknown as Json })
       .select("id, role, content, payload, created_at")
       .single();
     databaseError(assistantError);
@@ -118,23 +138,6 @@ export async function confirmChatProposal(
 
     const { db, user, timeZone } = await planningContext();
     const appDb = db as unknown as SupabaseClient<AppDatabase>;
-
-    let todosAdded = 0;
-    if (todos.length > 0) {
-      const { data: last } = await appDb
-        .from("todos")
-        .select("sort")
-        .eq("user_id", user.id)
-        .eq("date", date)
-        .order("sort", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      let sort = (last?.sort ?? 0) + 1;
-      const rows = todos.map((t) => ({ date, title: t.title, sort: sort++ }));
-      const { error } = await appDb.from("todos").insert(rows);
-      databaseError(error);
-      todosAdded = rows.length;
-    }
 
     const validBlocks = blocks
       .map((b) => ({
@@ -165,6 +168,29 @@ export async function confirmChatProposal(
       const confirmed = await confirmPlan(draft!.id);
       if (confirmed.error) throw new Error(confirmed.error);
       blocksAdded = confirmed.data!.count;
+    }
+
+    // To-dos go in only after the blocks succeeded, so a rejected plan
+    // doesn't leave half of itself behind. Titles already on today's list
+    // are skipped.
+    let todosAdded = 0;
+    if (todos.length > 0) {
+      const { data: existing, error: existingError } = await appDb
+        .from("todos")
+        .select("title, sort")
+        .eq("user_id", user.id)
+        .eq("date", date);
+      databaseError(existingError);
+      const seen = new Set((existing ?? []).map((t) => t.title.trim().toLowerCase()));
+      let sort = Math.max(0, ...(existing ?? []).map((t) => t.sort)) + 1;
+      const rows = todos
+        .filter((t) => !seen.has(t.title.toLowerCase()))
+        .map((t) => ({ date, title: t.title, sort: sort++ }));
+      if (rows.length > 0) {
+        const { error } = await appDb.from("todos").insert(rows);
+        databaseError(error);
+      }
+      todosAdded = rows.length;
     }
 
     revalidatePath("/today");

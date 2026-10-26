@@ -25,10 +25,11 @@ export default function PlanningChat({ initial }: { initial: { date: string; mes
   const [confirmedId, setConfirmedId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const endRef = useRef<HTMLDivElement>(null);
+  const typing = isPending && confirmingId === null;
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, typing]);
 
   function send() {
     const trimmed = text.trim();
@@ -42,6 +43,7 @@ export default function PlanningChat({ initial }: { initial: { date: string; mes
       if (result.error) {
         setError(result.error);
         setMessages((m) => m.filter((msg) => msg.id !== optimisticId));
+        setText(trimmed);
         return;
       }
       setMessages((m) => [
@@ -115,6 +117,21 @@ export default function PlanningChat({ initial }: { initial: { date: string; mes
             )}
           </div>
         ))}
+        {typing && (
+          <div
+            role="status"
+            aria-label="Assistant is typing"
+            className="flex w-fit items-center gap-1 rounded-lg border border-border bg-surface px-3 py-3"
+          >
+            {[0, 150, 300].map((delay) => (
+              <span
+                key={delay}
+                className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted"
+                style={{ animationDelay: `${delay}ms` }}
+              />
+            ))}
+          </div>
+        )}
         <div ref={endRef} />
       </div>
 
