@@ -12,9 +12,9 @@ I wanted one place that connects the big goal to what I do at 9am today. Off-the
 
 ## Features
 
-| Today | Schedule | Goals | Skills |
-|:-:|:-:|:-:|:-:|
-| <img src="docs/screenshots/today.png" width="180" alt="Today: ordered to-do list and upcoming blocks"> | <img src="docs/screenshots/schedule.png" width="180" alt="Day schedule in a calendar view"> | <img src="docs/screenshots/goals.png" width="180" alt="Goal chain from dream to weekly goals"> | <img src="docs/screenshots/skills.png" width="180" alt="Skill tree with status per skill"> |
+| Today | AI planner | Schedule | Goals | Skills |
+|:-:|:-:|:-:|:-:|:-:|
+| <img src="docs/screenshots/today.png" width="180" alt="Today: ordered to-do list and upcoming blocks"> | <img src="docs/screenshots/planner.png" width="180" alt="AI planning chat proposing a to-do list and time blocks"> | <img src="docs/screenshots/schedule.png" width="180" alt="Day schedule in a calendar view"> | <img src="docs/screenshots/goals.png" width="180" alt="Goal chain from dream to weekly goals"> | <img src="docs/screenshots/skills.png" width="180" alt="Skill tree with status per skill"> |
 
 - **AI daily planning chat:** describe your day in plain language; the assistant asks short follow-ups, then proposes an ordered to-do list and time blocks. Nothing is written until you confirm, and every change can be undone.
 - **Day schedule:** a Google-Calendar-style day view with drag-to-reschedule, editable blocks, and recurring events.
