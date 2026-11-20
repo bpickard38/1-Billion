@@ -3,25 +3,42 @@
 import { useState, useTransition } from "react";
 import { ArrowDown, ArrowUp, Plus, Sparkles, X } from "lucide-react";
 import { deleteSystem, generateSystem, saveSystem } from "@/app/(app)/systems/actions";
+import { EVERY_DAY, TIMES_OF_DAY, TIME_LABELS, type TimeOfDay } from "@/lib/systems";
 
-type Step = { key: string; text: string };
+// `id` is set for steps that already exist, so saving keeps today's ticks.
+type Step = { key: string; id?: string; text: string };
 
 // Only called from event handlers, never during render.
-const toSteps = (titles: string[]): Step[] => titles.map((text) => ({ key: crypto.randomUUID(), text }));
+const newSteps = (titles: string[]): Step[] => titles.map((text) => ({ key: crypto.randomUUID(), text }));
+
+const DAY_LETTERS = ["M", "T", "W", "T", "F", "S", "S"];
+const DAY_PRESETS = [
+  { label: "Every day", days: EVERY_DAY },
+  { label: "Weekdays", days: [1, 2, 3, 4, 5] },
+  { label: "Weekends", days: [6, 7] },
+];
 
 export default function SystemForm({
   id,
   initialName = "",
   initialSteps = [],
+  initialDays = EVERY_DAY,
+  initialTimeOfDay = null,
 }: {
   id?: string;
   initialName?: string;
-  initialSteps?: string[];
+  initialSteps?: { id: string; title: string }[];
+  initialDays?: number[];
+  initialTimeOfDay?: TimeOfDay | null;
 }) {
   const [name, setName] = useState(initialName);
   const [steps, setSteps] = useState<Step[]>(() =>
-    (initialSteps.length ? initialSteps : [""]).map((text, i) => ({ key: `initial-${i}`, text }))
+    initialSteps.length
+      ? initialSteps.map((s) => ({ key: s.id, id: s.id, text: s.title }))
+      : [{ key: "initial-0", text: "" }]
   );
+  const [days, setDays] = useState<number[]>(initialDays);
+  const [timeOfDay, setTimeOfDay] = useState<TimeOfDay | null>(initialTimeOfDay);
   const [prompt, setPrompt] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -42,6 +59,10 @@ export default function SystemForm({
     });
   }
 
+  function toggleDay(day: number) {
+    setDays((d) => (d.includes(day) ? d.filter((x) => x !== day) : [...d, day].sort((a, b) => a - b)));
+  }
+
   function askAi() {
     setError(null);
     startAi(async () => {
@@ -51,20 +72,31 @@ export default function SystemForm({
         return;
       }
       setName(result.draft.name);
-      setSteps(toSteps(result.draft.steps));
+      setSteps(newSteps(result.draft.steps));
     });
   }
 
   function save() {
     setError(null);
     startSave(async () => {
-      const result = await saveSystem({ id, name, steps: steps.map((s) => s.text) });
+      const result = await saveSystem({
+        id,
+        name,
+        steps: steps.map((s) => ({ id: s.id, title: s.text })),
+        daysOfWeek: days,
+        timeOfDay,
+      });
       if (result?.error) setError(result.error);
     });
   }
 
   const input =
     "w-full rounded-lg border border-border bg-bg px-3 py-2.5 text-base outline-none focus:border-accent";
+  const chip = (on: boolean) =>
+    `rounded-full border text-sm font-medium transition-colors ${
+      on ? "border-accent bg-accent text-white" : "border-border text-muted"
+    }`;
+  const sameDays = (a: number[], b: number[]) => a.join() === b.join();
 
   return (
     <div className="flex flex-col gap-6">
@@ -108,6 +140,55 @@ export default function SystemForm({
       </section>
 
       <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-semibold text-muted">Days</h2>
+        <div className="flex justify-between gap-1">
+          {DAY_LETTERS.map((letter, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => toggleDay(i + 1)}
+              aria-pressed={days.includes(i + 1)}
+              aria-label={["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][i]}
+              className={`h-10 w-10 ${chip(days.includes(i + 1))}`}
+            >
+              {letter}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          {DAY_PRESETS.map((p) => (
+            <button
+              key={p.label}
+              type="button"
+              onClick={() => setDays(p.days)}
+              className={`px-3 py-1 text-xs ${chip(sameDays(days, p.days))}`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-semibold text-muted">Time of day</h2>
+        <div className="grid grid-cols-4 gap-1 rounded-xl bg-surface p-1">
+          {[...TIMES_OF_DAY, null].map((t) => (
+            <button
+              key={t ?? "anytime"}
+              type="button"
+              onClick={() => setTimeOfDay(t)}
+              aria-pressed={timeOfDay === t}
+              className={`rounded-lg py-2 text-xs font-medium transition-colors ${
+                timeOfDay === t ? "bg-bg text-fg shadow-sm" : "text-muted"
+              }`}
+            >
+              {TIME_LABELS[t ?? "anytime"]}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold text-muted">Workflow</h2>
         <ol className="flex flex-col gap-2">
           {steps.map((step, i) => (
@@ -141,7 +222,7 @@ export default function SystemForm({
         </ol>
         <button
           type="button"
-          onClick={() => setSteps((s) => [...s, ...toSteps([""])])}
+          onClick={() => setSteps((s) => [...s, ...newSteps([""])])}
           className="flex items-center gap-1.5 self-start py-1 text-sm font-medium text-accent"
         >
           <Plus size={16} />

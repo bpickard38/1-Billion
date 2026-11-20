@@ -63,6 +63,48 @@ export type Database = {
         }
         Relationships: []
       }
+      step_logs: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          step_id: string
+          system_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          step_id: string
+          system_id: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          step_id?: string
+          system_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "step_logs_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "system_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "step_logs_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: false
+            referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_logs: {
         Row: {
           created_at: string
@@ -136,25 +178,31 @@ export type Database = {
       systems: {
         Row: {
           created_at: string
+          days_of_week: number[]
           id: string
           name: string
           sort: number
+          time_of_day: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          days_of_week?: number[]
           id?: string
           name: string
           sort?: number
+          time_of_day?: string | null
           updated_at?: string
           user_id?: string
         }
         Update: {
           created_at?: string
+          days_of_week?: number[]
           id?: string
           name?: string
           sort?: number
+          time_of_day?: string | null
           updated_at?: string
           user_id?: string
         }

@@ -18,8 +18,8 @@ begin
 
   insert into public.profiles (id) values (v_user_id) on conflict (id) do nothing;
 
-  insert into public.systems (user_id, name, sort)
-    values (v_user_id, 'Morning', 1)
+  insert into public.systems (user_id, name, sort, time_of_day)
+    values (v_user_id, 'Morning', 1, 'morning')
     on conflict (user_id, name) do nothing
     returning id into v_system_id;
 

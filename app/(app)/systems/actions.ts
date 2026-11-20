@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/supabase/profile";
 import { getLocalDateString, DEFAULT_TIMEZONE } from "@/lib/dates";
 import { draftSystem, type SystemDraft } from "@/lib/systems-ai";
+import { isTimeOfDay, type TimeOfDay } from "@/lib/systems";
 
 const MAX_STEPS = 30;
 
@@ -14,22 +15,86 @@ async function todayString() {
   return getLocalDateString(new Date(), profile?.timezone ?? DEFAULT_TIMEZONE);
 }
 
-/** Check (or uncheck) a system for today. */
+/**
+ * Check (or uncheck) a whole system for today from outside it. Checking ticks
+ * every step too; unchecking clears today's ticks, so the two stay in sync.
+ */
 export async function setSystemDone(systemId: string, done: boolean) {
+  const supabase = await createClient();
+  const date = await todayString();
+
+  if (done) {
+    const { data: steps } = await supabase.from("system_steps").select("id").eq("system_id", systemId);
+    const [{ error }, { error: stepError }] = await Promise.all([
+      supabase
+        .from("system_logs")
+        .upsert({ system_id: systemId, date }, { onConflict: "system_id,date", ignoreDuplicates: true }),
+      supabase.from("step_logs").upsert(
+        (steps ?? []).map((s) => ({ step_id: s.id, system_id: systemId, date })),
+        { onConflict: "step_id,date", ignoreDuplicates: true }
+      ),
+    ]);
+    if (error || stepError) throw new Error((error ?? stepError)!.message);
+  } else {
+    const [{ error }, { error: stepError }] = await Promise.all([
+      supabase.from("system_logs").delete().eq("system_id", systemId).eq("date", date),
+      supabase.from("step_logs").delete().eq("system_id", systemId).eq("date", date),
+    ]);
+    if (error || stepError) throw new Error((error ?? stepError)!.message);
+  }
+
+  refresh();
+}
+
+/**
+ * Tick (or untick) one step for today. The system is checked off once every
+ * step is ticked, and unchecked again if one is unticked.
+ */
+export async function setStepDone(systemId: string, stepId: string, done: boolean) {
   const supabase = await createClient();
   const date = await todayString();
 
   const { error } = done
     ? await supabase
+        .from("step_logs")
+        .upsert({ step_id: stepId, system_id: systemId, date }, { onConflict: "step_id,date", ignoreDuplicates: true })
+    : await supabase.from("step_logs").delete().eq("step_id", stepId).eq("date", date);
+  if (error) throw new Error(error.message);
+
+  const [{ count: stepCount }, { count: tickedCount }] = await Promise.all([
+    supabase.from("system_steps").select("id", { count: "exact", head: true }).eq("system_id", systemId),
+    supabase.from("step_logs").select("id", { count: "exact", head: true }).eq("system_id", systemId).eq("date", date),
+  ]);
+  const allDone = (stepCount ?? 0) > 0 && (tickedCount ?? 0) >= (stepCount ?? 0);
+
+  const { error: systemError } = allDone
+    ? await supabase
         .from("system_logs")
         .upsert({ system_id: systemId, date }, { onConflict: "system_id,date", ignoreDuplicates: true })
     : await supabase.from("system_logs").delete().eq("system_id", systemId).eq("date", date);
-  if (error) throw new Error(error.message);
+  if (systemError) throw new Error(systemError.message);
 
   refresh();
 }
 
-export type SystemInput = { id?: string; name: string; steps: string[] };
+/** Save a new order for all systems: `ids` top to bottom. */
+export async function setSystemOrder(ids: string[]) {
+  const supabase = await createClient();
+  const results = await Promise.all(
+    ids.map((id, i) => supabase.from("systems").update({ sort: i + 1 }).eq("id", id))
+  );
+  const failed = results.find((r) => r.error);
+  if (failed?.error) throw new Error(failed.error.message);
+  refresh();
+}
+
+export type SystemInput = {
+  id?: string;
+  name: string;
+  steps: { id?: string; title: string }[];
+  daysOfWeek: number[];
+  timeOfDay: TimeOfDay | null;
+};
 
 /**
  * Create or update a system and its steps. Returns an error message for the
@@ -37,15 +102,21 @@ export type SystemInput = { id?: string; name: string; steps: string[] };
  */
 export async function saveSystem(input: SystemInput): Promise<{ error: string }> {
   const name = input.name.trim().slice(0, 80);
-  const steps = input.steps.map((s) => s.trim().slice(0, 200)).filter(Boolean).slice(0, MAX_STEPS);
+  const steps = input.steps
+    .map((s) => ({ id: s.id, title: s.title.trim().slice(0, 200) }))
+    .filter((s) => s.title)
+    .slice(0, MAX_STEPS);
   if (!name) return { error: "Give the system a name." };
   if (steps.length === 0) return { error: "Add at least one step." };
+  const days_of_week = [...new Set(input.daysOfWeek)].filter((d) => d >= 1 && d <= 7).sort((a, b) => a - b);
+  if (days_of_week.length === 0) return { error: "Pick at least one day." };
+  const time_of_day = isTimeOfDay(input.timeOfDay) ? input.timeOfDay : null;
 
   const supabase = await createClient();
   let systemId = input.id;
 
   if (systemId) {
-    const { error } = await supabase.from("systems").update({ name }).eq("id", systemId);
+    const { error } = await supabase.from("systems").update({ name, days_of_week, time_of_day }).eq("id", systemId);
     if (error) return { error: error.code === "23505" ? "You already have a system with that name." : error.message };
   } else {
     const { data: last } = await supabase
@@ -56,24 +127,34 @@ export async function saveSystem(input: SystemInput): Promise<{ error: string }>
       .maybeSingle();
     const { data, error } = await supabase
       .from("systems")
-      .insert({ name, sort: (last?.sort ?? 0) + 1 })
+      .insert({ name, days_of_week, time_of_day, sort: (last?.sort ?? 0) + 1 })
       .select("id")
       .single();
     if (error) return { error: error.code === "23505" ? "You already have a system with that name." : error.message };
     systemId = data.id;
   }
 
-  // Replace the steps: insert the new list first, then remove the old rows,
-  // so a failed insert never leaves the system empty.
+  // Sync the steps: update kept ones in place (so today's ticks survive an
+  // edit), insert new ones, then delete removed ones last so a failure part
+  // way never leaves the system empty.
   const { data: oldSteps } = await supabase.from("system_steps").select("id").eq("system_id", systemId);
-  const { error: insertError } = await supabase
-    .from("system_steps")
-    .insert(steps.map((title, i) => ({ system_id: systemId!, title, sort: i + 1 })));
-  if (insertError) return { error: insertError.message };
+  const oldIds = new Set((oldSteps ?? []).map((s) => s.id));
+  const kept = steps.map((step, i) => ({ ...step, sort: i + 1 })).filter((s) => s.id && oldIds.has(s.id));
+  const added = steps.map((step, i) => ({ ...step, sort: i + 1 })).filter((s) => !s.id || !oldIds.has(s.id));
 
-  const oldIds = (oldSteps ?? []).map((s) => s.id);
-  if (oldIds.length > 0) {
-    const { error } = await supabase.from("system_steps").delete().in("id", oldIds);
+  const results = await Promise.all([
+    ...kept.map((s) => supabase.from("system_steps").update({ title: s.title, sort: s.sort }).eq("id", s.id!)),
+    added.length > 0
+      ? supabase.from("system_steps").insert(added.map((s) => ({ system_id: systemId!, title: s.title, sort: s.sort })))
+      : Promise.resolve({ error: null }),
+  ]);
+  const failed = results.find((r) => r.error);
+  if (failed?.error) return { error: failed.error.message };
+
+  const keptIds = new Set(kept.map((s) => s.id));
+  const removed = [...oldIds].filter((id) => !keptIds.has(id));
+  if (removed.length > 0) {
+    const { error } = await supabase.from("system_steps").delete().in("id", removed);
     if (error) return { error: error.message };
   }
 
