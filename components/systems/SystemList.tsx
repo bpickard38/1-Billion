@@ -5,12 +5,16 @@ import { useOptimistic, useTransition } from "react";
 import { ChevronRight } from "lucide-react";
 import CheckCircle from "@/components/systems/CheckCircle";
 import { setSystemDone } from "@/app/(app)/systems/actions";
+import { AREA_INFO, type Area } from "@/lib/areas";
 import { formatDays, TIMES_OF_DAY, TIME_LABELS, type TimeOfDay } from "@/lib/systems";
 
 type Item = {
   id: string;
   slug: string;
   name: string;
+  kind: "routine" | "task";
+  minutes: number | null;
+  area: Area | null;
   daysOfWeek: number[];
   timeOfDay: TimeOfDay | null;
   stepCount: number;
@@ -112,9 +116,14 @@ function Row({ item, onToggle }: { item: Item; onToggle: () => void }) {
             {item.name}
           </span>
           <span className="block text-xs text-muted">
-            {item.ticked > 0 && !item.done
-              ? `${item.ticked} of ${item.stepCount} steps`
-              : `${item.stepCount} ${item.stepCount === 1 ? "step" : "steps"}`}
+            {item.area && <span className="font-medium text-fg/70">{AREA_INFO[item.area].label} · </span>}
+            {item.kind === "task"
+              ? item.minutes
+                ? `${item.minutes} min`
+                : "Task"
+              : item.ticked > 0 && !item.done
+                ? `${item.ticked} of ${item.stepCount} steps`
+                : `${item.stepCount} ${item.stepCount === 1 ? "step" : "steps"}`}
             {!item.scheduled && ` · ${formatDays(item.daysOfWeek)}`}
             {item.streak > 0 && <span className="text-accent"> · {item.streak} day streak</span>}
           </span>

@@ -4,13 +4,14 @@ import { ChevronLeft } from "lucide-react";
 import SystemForm from "@/components/systems/SystemForm";
 import { createClient } from "@/lib/supabase/server";
 import { isTimeOfDay } from "@/lib/systems";
+import { isArea } from "@/lib/areas";
 
 export default async function EditSystemPage({ params }: PageProps<"/systems/[slug]/edit">) {
   const { slug } = await params;
   const supabase = await createClient();
   const { data: system } = await supabase
     .from("systems")
-    .select("id, name, days_of_week, time_of_day")
+    .select("id, name, kind, minutes, details, area, days_of_week, time_of_day")
     .eq("slug", slug)
     .maybeSingle();
   if (!system) notFound();
@@ -28,13 +29,17 @@ export default async function EditSystemPage({ params }: PageProps<"/systems/[sl
           {system.name}
         </Link>
       </div>
-      <h1 className="pb-4 text-2xl font-bold tracking-tight">Edit system</h1>
+      <h1 className="pb-4 text-2xl font-bold tracking-tight">Edit</h1>
       <SystemForm
         id={system.id}
         initialName={system.name}
         initialSteps={steps ?? []}
         initialDays={system.days_of_week}
         initialTimeOfDay={isTimeOfDay(system.time_of_day) ? system.time_of_day : null}
+        initialKind={system.kind === "task" ? "task" : "routine"}
+        initialMinutes={system.minutes}
+        initialDetails={system.details ?? ""}
+        area={isArea(system.area) ? system.area : null}
       />
     </>
   );

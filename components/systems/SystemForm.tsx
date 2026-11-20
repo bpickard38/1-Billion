@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { ArrowDown, ArrowUp, Plus, Sparkles, X } from "lucide-react";
 import { deleteSystem, generateSystem, saveSystem } from "@/app/(app)/systems/actions";
 import VoiceButton from "@/components/systems/VoiceButton";
+import type { Area } from "@/lib/areas";
 import { EVERY_DAY, TIMES_OF_DAY, TIME_LABELS, type TimeOfDay } from "@/lib/systems";
 
 // `id` is set for steps that already exist, so saving keeps today's ticks.
@@ -25,13 +26,24 @@ export default function SystemForm({
   initialSteps = [],
   initialDays = EVERY_DAY,
   initialTimeOfDay = null,
+  initialKind = "routine",
+  initialMinutes = null,
+  initialDetails = "",
+  area = null,
 }: {
   id?: string;
+  initialKind?: "routine" | "task";
+  initialMinutes?: number | null;
+  initialDetails?: string;
+  area?: Area | null;
   initialName?: string;
   initialSteps?: { id: string; title: string }[];
   initialDays?: number[];
   initialTimeOfDay?: TimeOfDay | null;
 }) {
+  const [kind, setKind] = useState<"routine" | "task">(initialKind);
+  const [minutes, setMinutes] = useState(initialMinutes ? String(initialMinutes) : "");
+  const [details, setDetails] = useState(initialDetails);
   const [name, setName] = useState(initialName);
   const [steps, setSteps] = useState<Step[]>(() =>
     initialSteps.length
@@ -83,6 +95,10 @@ export default function SystemForm({
     startSave(async () => {
       const result = await saveSystem({
         id,
+        kind,
+        minutes: /^\d{1,3}$/.test(minutes.trim()) ? Number(minutes.trim()) : null,
+        details,
+        area,
         name,
         steps: steps.map((s) => ({ id: s.id, title: s.text })),
         daysOfWeek: days,
@@ -102,7 +118,23 @@ export default function SystemForm({
 
   return (
     <div className="flex flex-col gap-6">
-      {!id && (
+      <div className="grid grid-cols-2 gap-1 rounded-xl bg-surface p-1">
+        {(["routine", "task"] as const).map((k) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => setKind(k)}
+            aria-pressed={kind === k}
+            className={`rounded-lg py-2 text-sm font-medium transition-colors ${
+              kind === k ? "bg-bg text-fg shadow-sm" : "text-muted"
+            }`}
+          >
+            {k === "routine" ? "Routine (steps)" : "Task (one thing)"}
+          </button>
+        ))}
+      </div>
+
+      {!id && kind === "routine" && (
         <section className="flex flex-col gap-2 rounded-xl bg-surface p-4">
           <h2 className="flex items-center gap-2 text-sm font-semibold">
             <Sparkles size={16} className="text-accent" />
@@ -149,10 +181,38 @@ export default function SystemForm({
           value={name}
           onChange={(e) => setName(e.target.value)}
           maxLength={80}
-          placeholder="Morning"
+          placeholder={kind === "task" ? "Learn a skill" : "Morning"}
           className={input}
         />
       </section>
+
+      {kind === "task" && (
+        <section className="flex flex-col gap-4">
+          <label className="flex flex-col gap-2">
+            <span className="text-sm font-semibold text-muted">Minutes (optional)</span>
+            <input
+              value={minutes}
+              onChange={(e) => setMinutes(e.target.value)}
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={3}
+              placeholder="60"
+              className={`${input} w-28`}
+            />
+          </label>
+          <label className="flex flex-col gap-2">
+            <span className="text-sm font-semibold text-muted">Notes (optional)</span>
+            <textarea
+              value={details}
+              onChange={(e) => setDetails(e.target.value)}
+              rows={3}
+              maxLength={1000}
+              placeholder="What exactly to do"
+              className={`${input} resize-none`}
+            />
+          </label>
+        </section>
+      )}
 
       <section className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold text-muted">Days</h2>
@@ -203,6 +263,7 @@ export default function SystemForm({
         </div>
       </section>
 
+      {kind === "routine" && (
       <section className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold text-muted">Workflow</h2>
         <ol className="flex flex-col gap-2">
@@ -244,6 +305,7 @@ export default function SystemForm({
           Add step
         </button>
       </section>
+      )}
 
       {error && <p className="text-sm text-bad">{error}</p>}
 
@@ -253,7 +315,7 @@ export default function SystemForm({
         disabled={savePending}
         className="rounded-xl bg-accent py-3 font-semibold text-white active:opacity-80 disabled:opacity-50"
       >
-        {savePending ? "Saving…" : id ? "Save changes" : "Create system"}
+        {savePending ? "Saving…" : id ? "Save changes" : kind === "task" ? "Create task" : "Create routine"}
       </button>
 
       {id && (
@@ -262,7 +324,7 @@ export default function SystemForm({
           onClick={() => (confirmDelete ? startSave(() => deleteSystem(id)) : setConfirmDelete(true))}
           className="pb-6 text-sm text-bad"
         >
-          {confirmDelete ? "Tap again to delete this system" : "Delete system"}
+          {confirmDelete ? "Tap again to delete" : kind === "task" ? "Delete task" : "Delete routine"}
         </button>
       )}
     </div>

@@ -5,6 +5,7 @@ import SystemRunner from "@/components/systems/SystemRunner";
 import { createClient } from "@/lib/supabase/server";
 import { loadSystems, rateFor } from "@/lib/systems-data";
 import { formatDays, TIME_LABELS } from "@/lib/systems";
+import { AREA_INFO } from "@/lib/areas";
 
 export default async function SystemPage({ params }: PageProps<"/systems/[slug]">) {
   const { slug } = await params;
@@ -34,8 +35,11 @@ export default async function SystemPage({ params }: PageProps<"/systems/[slug]"
       <h1 className="text-2xl font-bold tracking-tight">{system.name}</h1>
       <p className="pb-4 text-sm text-muted">
         {formatDays(system.daysOfWeek)} · {TIME_LABELS[system.timeOfDay ?? "anytime"]}
+        {system.minutes && ` · ${system.minutes} min`}
+        {system.area && ` · ${AREA_INFO[system.area].label}`}
         {!system.scheduledToday && " · not scheduled today"}
       </p>
+      {system.details && <p className="-mt-1 whitespace-pre-wrap pb-5">{system.details}</p>}
 
       <SystemRunner
         systemId={system.id}

@@ -22,14 +22,17 @@ Read `PLAN.md` first. Work on exactly the phase Brayden names. Nothing else.
 ## Layout
 ```
 app/(app)/systems/*   Systems tab: home calendar + list, detail, new, edit, reorder
-app/(app)/exercise    Exercise tab: AI weekly workout plan
+app/(app)/exercise    Exercise tab: AI workout plan, set logging, progressive overload
+app/(app)/content     Content tab  } components/areas/AreaPage: goals -> AI weekly
+app/(app)/code        Code tab     } tasks (systems with kind='task', area=...)
 app/(app)/chat        Chat tab: ChatGPT-style chat (OpenAI)
 app/api/transcribe    voice button: speech to text
 app/login, app/signup email + password
 components/systems/   small UI pieces for systems
 lib/openai.ts         the one OpenAI Responses API call (server only)
 lib/systems-ai.ts     AI draft of a system + transcription
-lib/workout-ai.ts     AI workout plan
+lib/workout-ai.ts     AI workout plan + progression
+lib/area-ai.ts        AI weekly tasks for Content / Code
 lib/*.ts              pure logic (dates, streaks), unit-tested
 lib/supabase/         browser client, server client, proxy session refresh
 supabase/             migrations + seed.sql

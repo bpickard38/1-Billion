@@ -8,6 +8,7 @@ import { getLocalDateString, DEFAULT_TIMEZONE } from "@/lib/dates";
 import { draftSystem, type SystemDraft } from "@/lib/systems-ai";
 import { isTimeOfDay, type TimeOfDay } from "@/lib/systems";
 import { uniqueSlug } from "@/lib/slug";
+import { isArea, type Area } from "@/lib/areas";
 
 const MAX_STEPS = 30;
 
@@ -33,10 +34,12 @@ export async function setSystemDone(systemId: string, done: boolean, day?: strin
       supabase
         .from("system_logs")
         .upsert({ system_id: systemId, date }, { onConflict: "system_id,date", ignoreDuplicates: true }),
-      supabase.from("step_logs").upsert(
-        (steps ?? []).map((s) => ({ step_id: s.id, system_id: systemId, date })),
-        { onConflict: "step_id,date", ignoreDuplicates: true }
-      ),
+      steps && steps.length > 0
+        ? supabase.from("step_logs").upsert(
+            steps.map((s) => ({ step_id: s.id, system_id: systemId, date })),
+            { onConflict: "step_id,date", ignoreDuplicates: true }
+          )
+        : Promise.resolve({ error: null }),
     ]);
     if (error || stepError) throw new Error((error ?? stepError)!.message);
   } else {
@@ -100,8 +103,14 @@ export async function setSystemOrder(ids: string[]) {
 
 export type SystemInput = {
   id?: string;
+  /** routine = ordered steps; task = one thing, optional minutes + details */
+  kind: "routine" | "task";
   name: string;
   steps: { id?: string; title: string }[];
+  minutes: number | null;
+  details: string;
+  /** set when created from the Content / Code tab */
+  area: Area | null;
   daysOfWeek: number[];
   timeOfDay: TimeOfDay | null;
 };
@@ -116,8 +125,15 @@ export async function saveSystem(input: SystemInput): Promise<{ error: string }>
     .map((s) => ({ id: s.id, title: s.title.trim().slice(0, 200) }))
     .filter((s) => s.title)
     .slice(0, MAX_STEPS);
-  if (!name) return { error: "Give the system a name." };
-  if (steps.length === 0) return { error: "Add at least one step." };
+  const kind = input.kind === "task" ? "task" : "routine";
+  if (!name) return { error: "Give it a name." };
+  if (kind === "routine" && steps.length === 0) return { error: "Add at least one step." };
+  if (kind === "task") steps.length = 0;
+  const minutes =
+    kind === "task" && typeof input.minutes === "number" && input.minutes >= 1 && input.minutes <= 600
+      ? Math.round(input.minutes)
+      : null;
+  const details = kind === "task" ? input.details.trim().slice(0, 1000) || null : null;
   const days_of_week = [...new Set(input.daysOfWeek)].filter((d) => d >= 1 && d <= 7).sort((a, b) => a - b);
   if (days_of_week.length === 0) return { error: "Pick at least one day." };
   const time_of_day = isTimeOfDay(input.timeOfDay) ? input.timeOfDay : null;
@@ -129,7 +145,7 @@ export async function saveSystem(input: SystemInput): Promise<{ error: string }>
   const slug = uniqueSlug(name, new Set((others ?? []).filter((o) => o.id !== systemId).map((o) => o.slug)));
 
   if (systemId) {
-    const { error } = await supabase.from("systems").update({ name, slug, days_of_week, time_of_day }).eq("id", systemId);
+    const { error } = await supabase.from("systems").update({ name, slug, kind, minutes, details, days_of_week, time_of_day }).eq("id", systemId);
     if (error) return { error: error.code === "23505" ? "You already have a system with that name." : error.message };
   } else {
     const { data: last } = await supabase
@@ -140,7 +156,7 @@ export async function saveSystem(input: SystemInput): Promise<{ error: string }>
       .maybeSingle();
     const { data, error } = await supabase
       .from("systems")
-      .insert({ name, slug, days_of_week, time_of_day, sort: (last?.sort ?? 0) + 1 })
+      .insert({ name, slug, kind, minutes, details, area: isArea(input.area) ? input.area : null, days_of_week, time_of_day, sort: (last?.sort ?? 0) + 1 })
       .select("id")
       .single();
     if (error) return { error: error.code === "23505" ? "You already have a system with that name." : error.message };
@@ -171,6 +187,7 @@ export async function saveSystem(input: SystemInput): Promise<{ error: string }>
     if (error) return { error: error.message };
   }
 
+  revalidatePath("/", "layout");
   redirect(`/systems/${slug}`);
 }
 

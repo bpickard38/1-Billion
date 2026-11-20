@@ -39,6 +39,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      area_plans: {
+        Row: {
+          area: string
+          created_at: string
+          goals: string
+          summary: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          area: string
+          created_at?: string
+          goals?: string
+          summary?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          area?: string
+          created_at?: string
+          goals?: string
+          summary?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           content: string
@@ -201,9 +228,13 @@ export type Database = {
       }
       systems: {
         Row: {
+          area: string | null
           created_at: string
           days_of_week: number[]
+          details: string | null
           id: string
+          kind: string
+          minutes: number | null
           name: string
           slug: string
           sort: number
@@ -212,9 +243,13 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          area?: string | null
           created_at?: string
           days_of_week?: number[]
+          details?: string | null
           id?: string
+          kind?: string
+          minutes?: number | null
           name: string
           slug: string
           sort?: number
@@ -223,9 +258,13 @@ export type Database = {
           user_id?: string
         }
         Update: {
+          area?: string | null
           created_at?: string
           days_of_week?: number[]
+          details?: string | null
           id?: string
+          kind?: string
+          minutes?: number | null
           name?: string
           slug?: string
           sort?: number

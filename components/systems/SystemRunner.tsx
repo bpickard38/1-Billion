@@ -54,6 +54,7 @@ export default function SystemRunner({
 
   return (
     <>
+      {steps.length > 0 && (
       <div className="mb-3 flex items-center gap-3">
         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface">
           <div
@@ -65,6 +66,7 @@ export default function SystemRunner({
           {tickedCount}/{steps.length}
         </span>
       </div>
+      )}
 
       <ol className="flex flex-col">
         {steps.map((step, i) => {
@@ -91,7 +93,7 @@ export default function SystemRunner({
         }`}
       >
         {state.done ? <CheckCircle checked size="lg" /> : <span className="h-8 w-8 rounded-full border-2 border-white/80" />}
-        {state.done ? "Done for today" : "Mark all done"}
+        {state.done ? "Done for today" : steps.length > 0 ? "Mark all done" : "Mark done"}
       </button>
     </>
   );

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/supabase/profile";
 import { getLocalDateString, DEFAULT_TIMEZONE } from "@/lib/dates";
 import { computeHabitStreak } from "@/lib/streaks";
+import { isArea, type Area } from "@/lib/areas";
 import { completionRate, isTimeOfDay, type TimeOfDay } from "@/lib/systems";
 
 const LOOKBACK_DAYS = 370;
@@ -12,6 +13,10 @@ export type SystemSummary = {
   id: string;
   slug: string;
   name: string;
+  kind: "routine" | "task";
+  minutes: number | null;
+  details: string | null;
+  area: Area | null;
   daysOfWeek: number[];
   timeOfDay: TimeOfDay | null;
   stepCount: number;
@@ -32,7 +37,7 @@ export async function loadSystems(onlySlug?: string) {
 
   let systemsQuery = supabase
     .from("systems")
-    .select("id, slug, name, days_of_week, time_of_day, created_at, system_steps(count)")
+    .select("id, slug, name, kind, minutes, details, area, days_of_week, time_of_day, created_at, system_steps(count)")
     .order("sort");
   if (onlySlug) systemsQuery = systemsQuery.eq("slug", onlySlug);
   const { data: systems } = await systemsQuery;
@@ -57,6 +62,10 @@ export async function loadSystems(onlySlug?: string) {
       id: s.id,
       slug: s.slug,
       name: s.name,
+      kind: s.kind === "task" ? "task" : "routine",
+      minutes: s.minutes,
+      details: s.details,
+      area: isArea(s.area) ? s.area : null,
       daysOfWeek: s.days_of_week,
       timeOfDay: isTimeOfDay(s.time_of_day) ? s.time_of_day : null,
       stepCount: s.system_steps[0]?.count ?? 0,

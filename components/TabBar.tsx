@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Dumbbell, ListChecks, MessageCircle } from "lucide-react";
+import { Clapperboard, Code, Dumbbell, ListChecks, MessageCircle } from "lucide-react";
 
 const tabs = [
   { href: "/systems", label: "Systems", Icon: ListChecks },
   { href: "/exercise", label: "Exercise", Icon: Dumbbell },
+  { href: "/content", label: "Content", Icon: Clapperboard },
+  { href: "/code", label: "Code", Icon: Code },
   { href: "/chat", label: "Chat", Icon: MessageCircle },
 ] as const;
 
