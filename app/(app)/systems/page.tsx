@@ -9,6 +9,7 @@ export default async function SystemsPage() {
   const { systems } = await loadSystems();
   const items = systems.map((s) => ({
     id: s.id,
+    slug: s.slug,
     name: s.name,
     daysOfWeek: s.daysOfWeek,
     timeOfDay: s.timeOfDay,

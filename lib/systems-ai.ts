@@ -71,3 +71,29 @@ export async function draftSystem(description: string): Promise<SystemDraft> {
     throw new Error("The AI gave back something unusable. Try again or rephrase.");
   }
 }
+
+/**
+ * Speech to text for the voice button. OPENAI_TRANSCRIBE_MODEL overrides the
+ * default model.
+ */
+export async function transcribe(audio: File): Promise<string> {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) throw new Error("AI isn't set up yet. Add OPENAI_API_KEY to the server environment.");
+
+  const body = new FormData();
+  body.append("file", audio, audio.name || "voice.webm");
+  body.append("model", process.env.OPENAI_TRANSCRIBE_MODEL || "gpt-4o-mini-transcribe");
+
+  const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}` },
+    body,
+    cache: "no-store",
+    signal: AbortSignal.timeout(60000),
+  });
+  if (!response.ok) {
+    throw new Error(response.status === 429 ? "AI usage limit reached. Try again later." : "Couldn't understand the recording. Try again or type it.");
+  }
+  const payload = (await response.json()) as { text?: string };
+  return (payload.text ?? "").trim();
+}

@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
-import HistoryGrid from "@/components/systems/HistoryGrid";
+import MonthCalendar from "@/components/systems/MonthCalendar";
 import { historyFor, loadSystems } from "@/lib/systems-data";
-import { formatDays } from "@/lib/systems";
+import { formatDays, monthNav, parseMonth } from "@/lib/systems";
 
-export default async function HistoryPage() {
+export default async function HistoryPage({ searchParams }: PageProps<"/systems/history">) {
+  const { month: monthParam } = await searchParams;
   const { today, systems } = await loadSystems();
-  const rows = systems.map((system) => ({ system, ...historyFor(system, today) }));
+  const month = parseMonth(monthParam, today);
+  const nav = monthNav(month, today, "/systems/history");
+  const rows = systems.map((system) => ({ system, ...historyFor(system, today, month) }));
 
   const totals = rows.reduce(
     (acc, r) => ({ done: acc.done + (r.rate?.done ?? 0), scheduled: acc.scheduled + (r.rate?.scheduled ?? 0) }),
@@ -36,17 +39,17 @@ export default async function HistoryPage() {
         </div>
       </div>
 
-      <ul className="mt-6 flex flex-col gap-6 pb-8">
-        {rows.map(({ system, grid, rate }) => (
+      <ul className="mt-6 flex flex-col gap-8 pb-8">
+        {rows.map(({ system, weeks, rate }) => (
           <li key={system.id} className="flex flex-col gap-2">
-            <Link href={`/systems/${system.id}`} className="flex items-baseline justify-between gap-2">
+            <Link href={`/systems/${system.slug}`} className="flex items-baseline justify-between gap-2">
               <span className="truncate font-semibold">{system.name}</span>
               <span className="shrink-0 text-xs text-muted">
                 {rate ? `${rate.pct}%` : "–"} · {system.streak} day streak
               </span>
             </Link>
             <p className="-mt-2 text-xs text-muted">{formatDays(system.daysOfWeek)}</p>
-            <HistoryGrid grid={grid} today={today} />
+            <MonthCalendar key={month} systemId={system.id} weeks={weeks} today={today} {...nav} />
           </li>
         ))}
       </ul>

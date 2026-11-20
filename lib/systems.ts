@@ -1,4 +1,4 @@
-import { addDays, format, getISODay, parseISO, startOfWeek, subDays, subWeeks } from "date-fns";
+import { addDays, addMonths, format, getISODay, parseISO, subDays } from "date-fns";
 
 export const TIMES_OF_DAY = ["morning", "afternoon", "evening"] as const;
 export type TimeOfDay = (typeof TIMES_OF_DAY)[number];
@@ -34,37 +34,53 @@ export type HistoryState = "done" | "missed" | "off" | "future" | "before";
 export type HistoryCell = { date: string; state: HistoryState };
 
 /**
- * A GitHub-style grid: `weeks` columns (oldest first), each Monday..Sunday.
+ * One month as Monday-first rows of 7. Days outside the month are null.
  * - done:   checked off that day
- * - missed: scheduled, in the past, not done (today counts as missed only once it's over, so it's "future" until done)
+ * - missed: a scheduled day, before today, not done
  * - off:    not a scheduled day
  * - before: before the system existed
+ * - future: today (until done) and later
  */
-export function buildHistory(
+export function buildMonth(
+  month: string,
   doneDates: ReadonlySet<string>,
   daysOfWeek: readonly number[],
   today: string,
-  startDate: string,
-  weeks = 16
-): HistoryCell[][] {
-  const firstMonday = subWeeks(startOfWeek(parseISO(today), { weekStartsOn: 1 }), weeks - 1);
-  const grid: HistoryCell[][] = [];
-  for (let w = 0; w < weeks; w++) {
-    const column: HistoryCell[] = [];
-    for (let d = 0; d < 7; d++) {
-      const day = addDays(firstMonday, w * 7 + d);
-      const date = format(day, "yyyy-MM-dd");
-      let state: HistoryState;
-      if (doneDates.has(date)) state = "done";
-      else if (date >= today) state = "future";
-      else if (date < startDate) state = "before";
-      else if (!daysOfWeek.includes(getISODay(day))) state = "off";
-      else state = "missed";
-      column.push({ date, state });
-    }
-    grid.push(column);
+  startDate: string
+): (HistoryCell | null)[][] {
+  const first = parseISO(`${month}-01`);
+  const leading = getISODay(first) - 1;
+  const cells: (HistoryCell | null)[] = Array(leading).fill(null);
+  for (let day = first; format(day, "yyyy-MM") === month; day = addDays(day, 1)) {
+    const date = format(day, "yyyy-MM-dd");
+    let state: HistoryState;
+    if (doneDates.has(date)) state = "done";
+    else if (date >= today) state = "future";
+    else if (date < startDate) state = "before";
+    else if (!daysOfWeek.includes(getISODay(day))) state = "off";
+    else state = "missed";
+    cells.push({ date, state });
   }
-  return grid;
+  while (cells.length % 7 !== 0) cells.push(null);
+  const rows: (HistoryCell | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7));
+  return rows;
+}
+
+/** "2026-11" -> "2026-10" / "2026-12". */
+export function shiftMonth(month: string, by: number): string {
+  return format(addMonths(parseISO(`${month}-01`), by), "yyyy-MM");
+}
+
+/** A valid "yyyy-MM" no later than today's month, else today's month. */
+export function parseMonth(value: unknown, today: string): string {
+  const current = today.slice(0, 7);
+  if (typeof value !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(value)) return current;
+  return value > current ? current : value;
+}
+
+export function monthLabel(month: string): string {
+  return format(parseISO(`${month}-01`), "MMMM yyyy");
 }
 
 /**
@@ -92,4 +108,15 @@ export function completionRate(
   }
   if (scheduled === 0) return null;
   return { done, scheduled, pct: Math.round((done / scheduled) * 100) };
+}
+
+/** Prev/next links for a month view at `path` (up to 12 months back, never past today's month). */
+export function monthNav(month: string, today: string, path: string) {
+  const current = today.slice(0, 7);
+  const href = (m: string) => (m === current ? path : `${path}?month=${m}`);
+  return {
+    title: monthLabel(month),
+    prevHref: month > shiftMonth(current, -12) ? href(shiftMonth(month, -1)) : null,
+    nextHref: month < current ? href(shiftMonth(month, 1)) : null,
+  };
 }

@@ -181,6 +181,7 @@ export type Database = {
           days_of_week: number[]
           id: string
           name: string
+          slug: string
           sort: number
           time_of_day: string | null
           updated_at: string
@@ -191,6 +192,7 @@ export type Database = {
           days_of_week?: number[]
           id?: string
           name: string
+          slug: string
           sort?: number
           time_of_day?: string | null
           updated_at?: string
@@ -201,6 +203,7 @@ export type Database = {
           days_of_week?: number[]
           id?: string
           name?: string
+          slug?: string
           sort?: number
           time_of_day?: string | null
           updated_at?: string

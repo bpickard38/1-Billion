@@ -7,6 +7,7 @@ import { getProfile } from "@/lib/supabase/profile";
 import { getLocalDateString, DEFAULT_TIMEZONE } from "@/lib/dates";
 import { draftSystem, type SystemDraft } from "@/lib/systems-ai";
 import { isTimeOfDay, type TimeOfDay } from "@/lib/systems";
+import { uniqueSlug } from "@/lib/slug";
 
 const MAX_STEPS = 30;
 
@@ -16,12 +17,15 @@ async function todayString() {
 }
 
 /**
- * Check (or uncheck) a whole system for today from outside it. Checking ticks
- * every step too; unchecking clears today's ticks, so the two stay in sync.
+ * Check (or uncheck) a whole system for a day (today by default, or a past
+ * day tapped on the calendar). Checking ticks every step too; unchecking
+ * clears that day's ticks, so the two stay in sync.
  */
-export async function setSystemDone(systemId: string, done: boolean) {
+export async function setSystemDone(systemId: string, done: boolean, day?: string) {
   const supabase = await createClient();
-  const date = await todayString();
+  const today = await todayString();
+  const date = day ?? today;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > today) throw new Error("You can only log today or past days.");
 
   if (done) {
     const { data: steps } = await supabase.from("system_steps").select("id").eq("system_id", systemId);
@@ -115,8 +119,11 @@ export async function saveSystem(input: SystemInput): Promise<{ error: string }>
   const supabase = await createClient();
   let systemId = input.id;
 
+  const { data: others } = await supabase.from("systems").select("id, slug");
+  const slug = uniqueSlug(name, new Set((others ?? []).filter((o) => o.id !== systemId).map((o) => o.slug)));
+
   if (systemId) {
-    const { error } = await supabase.from("systems").update({ name, days_of_week, time_of_day }).eq("id", systemId);
+    const { error } = await supabase.from("systems").update({ name, slug, days_of_week, time_of_day }).eq("id", systemId);
     if (error) return { error: error.code === "23505" ? "You already have a system with that name." : error.message };
   } else {
     const { data: last } = await supabase
@@ -127,7 +134,7 @@ export async function saveSystem(input: SystemInput): Promise<{ error: string }>
       .maybeSingle();
     const { data, error } = await supabase
       .from("systems")
-      .insert({ name, days_of_week, time_of_day, sort: (last?.sort ?? 0) + 1 })
+      .insert({ name, slug, days_of_week, time_of_day, sort: (last?.sort ?? 0) + 1 })
       .select("id")
       .single();
     if (error) return { error: error.code === "23505" ? "You already have a system with that name." : error.message };
@@ -158,7 +165,7 @@ export async function saveSystem(input: SystemInput): Promise<{ error: string }>
     if (error) return { error: error.message };
   }
 
-  redirect(`/systems/${systemId}`);
+  redirect(`/systems/${slug}`);
 }
 
 export async function deleteSystem(systemId: string) {

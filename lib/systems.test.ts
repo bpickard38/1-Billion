@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildHistory, completionRate, formatDays, isTimeOfDay } from "./systems.ts";
+import { buildMonth, completionRate, formatDays, isTimeOfDay, parseMonth, shiftMonth } from "./systems.ts";
 
 const WEEKDAYS = [1, 2, 3, 4, 5];
 
@@ -17,29 +17,39 @@ test("isTimeOfDay accepts the three slots only", () => {
   assert.ok(!isTimeOfDay(null));
 });
 
-// 2026-11-19 is a Thursday.
-test("buildHistory: 16 Monday-first columns ending in today's week", () => {
-  const grid = buildHistory(new Set(), WEEKDAYS, "2026-11-19", "2026-01-01");
-  assert.equal(grid.length, 16);
-  assert.ok(grid.every((col) => col.length === 7));
-  assert.equal(grid[15][0].date, "2026-11-16"); // Monday of this week
-  assert.equal(grid[15][3].date, "2026-11-19"); // today
-  assert.equal(grid[0][0].date, "2026-08-03");
+// 2026-11-19 is a Thursday. November 2026 starts on a Sunday.
+test("buildMonth lays the month out Monday-first with padding", () => {
+  const rows = buildMonth("2026-11", new Set(), WEEKDAYS, "2026-11-19", "2026-01-01");
+  assert.ok(rows.every((r) => r.length === 7));
+  assert.equal(rows.length, 6);
+  assert.deepEqual(rows[0].slice(0, 6), [null, null, null, null, null, null]);
+  assert.equal(rows[0][6]?.date, "2026-11-01");
+  assert.equal(rows[5][0]?.date, "2026-11-30");
+  assert.equal(rows[5][1], null);
 });
 
-test("buildHistory marks done, missed, off, before and future", () => {
+test("buildMonth marks done, missed, off, before and future", () => {
   const done = new Set(["2026-11-16", "2026-11-19"]);
-  const week = buildHistory(done, WEEKDAYS, "2026-11-19", "2026-11-17").at(-1)!;
+  const week = buildMonth("2026-11", done, WEEKDAYS, "2026-11-19", "2026-11-17")[3];
   assert.deepEqual(
-    week.map((c) => c.state),
-    // Mon done (before start, still shows), Tue missed, Wed missed, Thu (today) done, Fri-Sun future
+    week.map((c) => c?.state),
+    // Mon 16 done (even before start), Tue/Wed missed, Thu (today) done, Fri-Sun future
     ["done", "missed", "missed", "done", "future", "future", "future"]
   );
-  const lastWeek = buildHistory(new Set(), WEEKDAYS, "2026-11-19", "2026-11-12").at(-2)!;
+  const lastWeek = buildMonth("2026-11", new Set(), WEEKDAYS, "2026-11-19", "2026-11-12")[2];
   assert.deepEqual(
-    lastWeek.map((c) => c.state),
+    lastWeek.map((c) => c?.state),
     ["before", "before", "before", "missed", "missed", "off", "off"]
   );
+});
+
+test("shiftMonth crosses years and parseMonth rejects junk and future months", () => {
+  assert.equal(shiftMonth("2026-01", -1), "2025-12");
+  assert.equal(shiftMonth("2026-12", 1), "2027-01");
+  assert.equal(parseMonth("2026-10", "2026-11-19"), "2026-10");
+  assert.equal(parseMonth("2027-01", "2026-11-19"), "2026-11");
+  assert.equal(parseMonth("nope", "2026-11-19"), "2026-11");
+  assert.equal(parseMonth(undefined, "2026-11-19"), "2026-11");
 });
 
 test("completionRate ignores unscheduled days and an unfinished today", () => {

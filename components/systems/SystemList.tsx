@@ -9,6 +9,7 @@ import { formatDays, TIMES_OF_DAY, TIME_LABELS, type TimeOfDay } from "@/lib/sys
 
 type Item = {
   id: string;
+  slug: string;
   name: string;
   daysOfWeek: number[];
   timeOfDay: TimeOfDay | null;
@@ -94,7 +95,7 @@ function Row({ item, onToggle }: { item: Item; onToggle: () => void }) {
       >
         <CheckCircle checked={item.doneToday} size="md" />
       </button>
-      <Link href={`/systems/${item.id}`} className="flex min-w-0 flex-1 items-center gap-2 py-4 pr-3">
+      <Link href={`/systems/${item.slug}`} className="flex min-w-0 flex-1 items-center gap-2 py-4 pr-3">
         <span className="min-w-0 flex-1">
           <span className={`block truncate font-medium ${item.doneToday ? "text-muted line-through" : ""}`}>
             {item.name}

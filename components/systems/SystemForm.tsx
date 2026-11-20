@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { ArrowDown, ArrowUp, Plus, Sparkles, X } from "lucide-react";
 import { deleteSystem, generateSystem, saveSystem } from "@/app/(app)/systems/actions";
+import VoiceButton from "@/components/systems/VoiceButton";
 import { EVERY_DAY, TIMES_OF_DAY, TIME_LABELS, type TimeOfDay } from "@/lib/systems";
 
 // `id` is set for steps that already exist, so saving keeps today's ticks.
@@ -41,6 +42,7 @@ export default function SystemForm({
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay | null>(initialTimeOfDay);
   const [prompt, setPrompt] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [aiPending, startAi] = useTransition();
   const [savePending, startSave] = useTransition();
@@ -63,12 +65,12 @@ export default function SystemForm({
     setDays((d) => (d.includes(day) ? d.filter((x) => x !== day) : [...d, day].sort((a, b) => a - b)));
   }
 
-  function askAi() {
-    setError(null);
+  function askAi(text = prompt) {
+    setAiError(null);
     startAi(async () => {
-      const result = await generateSystem(prompt);
+      const result = await generateSystem(text);
       if ("error" in result) {
-        setError(result.error);
+        setAiError(result.error);
         return;
       }
       setName(result.draft.name);
@@ -113,15 +115,28 @@ export default function SystemForm({
             placeholder="e.g. A school system for after class: review notes, do homework, plan tomorrow"
             className={`${input} resize-none`}
           />
-          <button
-            type="button"
-            onClick={askAi}
-            disabled={aiPending || !prompt.trim()}
-            className="rounded-lg bg-accent py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-          >
-            {aiPending ? "Thinking…" : "Draft my system"}
-          </button>
-          <p className="text-xs text-muted">The draft fills in the form below so you can edit it before saving.</p>
+          <div className="flex gap-2">
+            <VoiceButton
+              disabled={aiPending}
+              onError={setAiError}
+              onText={(text) => {
+                setPrompt(text);
+                askAi(text);
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => askAi()}
+              disabled={aiPending || !prompt.trim()}
+              className="flex-1 rounded-lg bg-accent py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {aiPending ? "Thinking…" : "Draft my system"}
+            </button>
+          </div>
+          <p className="text-xs text-muted">
+            Type or tap the mic and say it. The draft fills in the form below so you can edit it before saving.
+          </p>
+          {aiError && <p className="text-sm text-bad">{aiError}</p>}
         </section>
       )}
 

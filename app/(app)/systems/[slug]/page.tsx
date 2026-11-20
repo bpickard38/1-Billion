@@ -2,23 +2,24 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import SystemRunner from "@/components/systems/SystemRunner";
-import HistoryGrid from "@/components/systems/HistoryGrid";
+import MonthCalendar from "@/components/systems/MonthCalendar";
 import { createClient } from "@/lib/supabase/server";
 import { historyFor, loadSystems } from "@/lib/systems-data";
-import { formatDays, TIME_LABELS } from "@/lib/systems";
+import { formatDays, monthNav, parseMonth, TIME_LABELS } from "@/lib/systems";
 
-export default async function SystemPage({ params }: PageProps<"/systems/[id]">) {
-  const { id } = await params;
-  const supabase = await createClient();
-  const { today, systems } = await loadSystems(id);
+export default async function SystemPage({ params, searchParams }: PageProps<"/systems/[slug]">) {
+  const [{ slug }, { month: monthParam }] = await Promise.all([params, searchParams]);
+  const { today, systems } = await loadSystems(slug);
   const system = systems[0];
   if (!system) notFound();
 
+  const supabase = await createClient();
   const [{ data: steps }, { data: stepLogs }] = await Promise.all([
-    supabase.from("system_steps").select("id, title").eq("system_id", id).order("sort"),
-    supabase.from("step_logs").select("step_id").eq("system_id", id).eq("date", today),
+    supabase.from("system_steps").select("id, title").eq("system_id", system.id).order("sort"),
+    supabase.from("step_logs").select("step_id").eq("system_id", system.id).eq("date", today),
   ]);
-  const { grid, rate } = historyFor(system, today);
+  const month = parseMonth(monthParam, today);
+  const { weeks, rate } = historyFor(system, today, month);
 
   return (
     <>
@@ -27,7 +28,7 @@ export default async function SystemPage({ params }: PageProps<"/systems/[id]">)
           <ChevronLeft size={18} />
           Systems
         </Link>
-        <Link href={`/systems/${id}/edit`} className="text-sm text-accent">
+        <Link href={`/systems/${slug}/edit`} className="text-sm text-accent">
           Edit
         </Link>
       </div>
@@ -39,7 +40,7 @@ export default async function SystemPage({ params }: PageProps<"/systems/[id]">)
       </p>
 
       <SystemRunner
-        systemId={id}
+        systemId={system.id}
         steps={steps ?? []}
         initialTicked={(stepLogs ?? []).map((l) => l.step_id)}
         initialDone={system.doneToday}
@@ -59,7 +60,13 @@ export default async function SystemPage({ params }: PageProps<"/systems/[id]">)
             </p>
           </div>
         </div>
-        <HistoryGrid grid={grid} today={today} />
+        <MonthCalendar
+          key={month}
+          systemId={system.id}
+          weeks={weeks}
+          today={today}
+          {...monthNav(month, today, `/systems/${slug}`)}
+        />
       </section>
     </>
   );
