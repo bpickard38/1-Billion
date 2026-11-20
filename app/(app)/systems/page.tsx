@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpDown, CalendarDays, Plus } from "lucide-react";
+import { ArrowUpDown, Plus } from "lucide-react";
 import PageTitle from "@/components/PageTitle";
 import SystemList from "@/components/systems/SystemList";
 import HomeCalendar from "@/components/systems/HomeCalendar";
@@ -37,9 +37,6 @@ export default async function SystemsPage({ searchParams }: PageProps<"/systems"
         <PageTitle>Systems</PageTitle>
         {items.length > 0 && (
           <div className="flex items-center gap-1">
-            <Link href="/systems/history" aria-label="History" className="rounded-lg p-2 text-muted active:bg-surface">
-              <CalendarDays size={20} />
-            </Link>
             <Link href="/systems/reorder" aria-label="Reorder" className="rounded-lg p-2 text-muted active:bg-surface">
               <ArrowUpDown size={20} />
             </Link>

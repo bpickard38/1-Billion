@@ -30,43 +30,6 @@ export function formatDays(days: readonly number[]): string {
     .join(", ");
 }
 
-export type HistoryState = "done" | "missed" | "off" | "future" | "before";
-export type HistoryCell = { date: string; state: HistoryState };
-
-/**
- * One month as Monday-first rows of 7. Days outside the month are null.
- * - done:   checked off that day
- * - missed: a scheduled day, before today, not done
- * - off:    not a scheduled day
- * - before: before the system existed
- * - future: today (until done) and later
- */
-export function buildMonth(
-  month: string,
-  doneDates: ReadonlySet<string>,
-  daysOfWeek: readonly number[],
-  today: string,
-  startDate: string
-): (HistoryCell | null)[][] {
-  const first = parseISO(`${month}-01`);
-  const leading = getISODay(first) - 1;
-  const cells: (HistoryCell | null)[] = Array(leading).fill(null);
-  for (let day = first; format(day, "yyyy-MM") === month; day = addDays(day, 1)) {
-    const date = format(day, "yyyy-MM-dd");
-    let state: HistoryState;
-    if (doneDates.has(date)) state = "done";
-    else if (date >= today) state = "future";
-    else if (date < startDate) state = "before";
-    else if (!daysOfWeek.includes(getISODay(day))) state = "off";
-    else state = "missed";
-    cells.push({ date, state });
-  }
-  while (cells.length % 7 !== 0) cells.push(null);
-  const rows: (HistoryCell | null)[][] = [];
-  for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7));
-  return rows;
-}
-
 /** "2026-11" -> "2026-10" / "2026-12". */
 export function shiftMonth(month: string, by: number): string {
   return format(addMonths(parseISO(`${month}-01`), by), "yyyy-MM");

@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/supabase/profile";
 import { getLocalDateString, DEFAULT_TIMEZONE } from "@/lib/dates";
 import { computeHabitStreak } from "@/lib/streaks";
-import { buildMonth, completionRate, isTimeOfDay, type TimeOfDay } from "@/lib/systems";
+import { completionRate, isTimeOfDay, type TimeOfDay } from "@/lib/systems";
 
 const LOOKBACK_DAYS = 370;
 
@@ -71,9 +71,7 @@ export async function loadSystems(onlySlug?: string) {
   return { today, systems: summaries };
 }
 
-export function historyFor(system: SystemSummary, today: string, month: string) {
-  return {
-    weeks: buildMonth(month, system.doneDates, system.daysOfWeek, today, system.startDate),
-    rate: completionRate(system.doneDates, system.daysOfWeek, today, system.startDate),
-  };
+/** Share of scheduled days done over the last 30 days. */
+export function rateFor(system: SystemSummary, today: string) {
+  return completionRate(system.doneDates, system.daysOfWeek, today, system.startDate);
 }

@@ -1,7 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  buildMonth,
   buildOverviewMonth,
   completionRate,
   formatDays,
@@ -24,32 +23,6 @@ test("isTimeOfDay accepts the three slots only", () => {
   assert.ok(isTimeOfDay("evening"));
   assert.ok(!isTimeOfDay("night"));
   assert.ok(!isTimeOfDay(null));
-});
-
-// 2026-11-19 is a Thursday. November 2026 starts on a Sunday.
-test("buildMonth lays the month out Monday-first with padding", () => {
-  const rows = buildMonth("2026-11", new Set(), WEEKDAYS, "2026-11-19", "2026-01-01");
-  assert.ok(rows.every((r) => r.length === 7));
-  assert.equal(rows.length, 6);
-  assert.deepEqual(rows[0].slice(0, 6), [null, null, null, null, null, null]);
-  assert.equal(rows[0][6]?.date, "2026-11-01");
-  assert.equal(rows[5][0]?.date, "2026-11-30");
-  assert.equal(rows[5][1], null);
-});
-
-test("buildMonth marks done, missed, off, before and future", () => {
-  const done = new Set(["2026-11-16", "2026-11-19"]);
-  const week = buildMonth("2026-11", done, WEEKDAYS, "2026-11-19", "2026-11-17")[3];
-  assert.deepEqual(
-    week.map((c) => c?.state),
-    // Mon 16 done (even before start), Tue/Wed missed, Thu (today) done, Fri-Sun future
-    ["done", "missed", "missed", "done", "future", "future", "future"]
-  );
-  const lastWeek = buildMonth("2026-11", new Set(), WEEKDAYS, "2026-11-19", "2026-11-12")[2];
-  assert.deepEqual(
-    lastWeek.map((c) => c?.state),
-    ["before", "before", "before", "missed", "missed", "off", "off"]
-  );
 });
 
 test("shiftMonth crosses years and parseMonth rejects junk and future months", () => {

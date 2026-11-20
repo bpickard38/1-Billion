@@ -2,13 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import SystemRunner from "@/components/systems/SystemRunner";
-import MonthCalendar from "@/components/systems/MonthCalendar";
 import { createClient } from "@/lib/supabase/server";
-import { historyFor, loadSystems } from "@/lib/systems-data";
-import { formatDays, monthNav, parseMonth, TIME_LABELS } from "@/lib/systems";
+import { loadSystems, rateFor } from "@/lib/systems-data";
+import { formatDays, TIME_LABELS } from "@/lib/systems";
 
-export default async function SystemPage({ params, searchParams }: PageProps<"/systems/[slug]">) {
-  const [{ slug }, { month: monthParam }] = await Promise.all([params, searchParams]);
+export default async function SystemPage({ params }: PageProps<"/systems/[slug]">) {
+  const { slug } = await params;
   const { today, systems } = await loadSystems(slug);
   const system = systems[0];
   if (!system) notFound();
@@ -18,8 +17,7 @@ export default async function SystemPage({ params, searchParams }: PageProps<"/s
     supabase.from("system_steps").select("id, title").eq("system_id", system.id).order("sort"),
     supabase.from("step_logs").select("step_id").eq("system_id", system.id).eq("date", today),
   ]);
-  const month = parseMonth(monthParam, today);
-  const { weeks, rate } = historyFor(system, today, month);
+  const rate = rateFor(system, today);
 
   return (
     <>
@@ -47,7 +45,6 @@ export default async function SystemPage({ params, searchParams }: PageProps<"/s
       />
 
       <section className="mt-8 flex flex-col gap-3 pb-8">
-        <h2 className="text-sm font-semibold text-muted">History</h2>
         <div className="grid grid-cols-2 gap-2">
           <div className="rounded-xl bg-surface px-4 py-3">
             <p className="text-2xl font-bold">{system.streak}</p>
@@ -60,13 +57,6 @@ export default async function SystemPage({ params, searchParams }: PageProps<"/s
             </p>
           </div>
         </div>
-        <MonthCalendar
-          key={month}
-          systemId={system.id}
-          weeks={weeks}
-          today={today}
-          {...monthNav(month, today, `/systems/${slug}`)}
-        />
       </section>
     </>
   );
