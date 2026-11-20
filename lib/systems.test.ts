@@ -1,6 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildMonth, completionRate, formatDays, isTimeOfDay, parseMonth, shiftMonth } from "./systems.ts";
+import {
+  buildMonth,
+  buildOverviewMonth,
+  completionRate,
+  formatDays,
+  isTimeOfDay,
+  parseDay,
+  parseMonth,
+  shiftMonth,
+} from "./systems.ts";
 
 const WEEKDAYS = [1, 2, 3, 4, 5];
 
@@ -66,4 +75,29 @@ test("completionRate counts today once it's done, and bonus days off-schedule", 
 
 test("completionRate is null before any scheduled day has passed", () => {
   assert.equal(completionRate(new Set(), WEEKDAYS, "2026-11-19", "2026-11-19"), null);
+});
+
+test("buildOverviewMonth combines systems per day", () => {
+  const morning = { doneDates: new Set(["2026-11-16", "2026-11-17", "2026-11-19"]), daysOfWeek: [1, 2, 3, 4, 5, 6, 7], startDate: "2026-11-01" };
+  const school = { doneDates: new Set(["2026-11-16", "2026-11-22"]), daysOfWeek: WEEKDAYS, startDate: "2026-11-01" };
+  const week = buildOverviewMonth("2026-11", [morning, school], "2026-11-20")[3];
+  assert.deepEqual(
+    week.map((c) => c?.state),
+    // Mon both, Tue morning only, Wed none, Thu morning only, Fri (today) none yet, Sat/Sun future
+    ["all", "some", "none", "some", "none", "future", "future"]
+  );
+});
+
+test("buildOverviewMonth: days with nothing scheduled are off, unless something was done", () => {
+  const school = { doneDates: new Set(["2026-11-15"]), daysOfWeek: WEEKDAYS, startDate: "2026-11-01" };
+  const week = buildOverviewMonth("2026-11", [school], "2026-11-30")[2];
+  assert.equal(week[5]?.state, "off"); // Sat 14
+  assert.equal(week[6]?.state, "all"); // Sun 15, bonus
+});
+
+test("parseDay clamps to today and rejects junk", () => {
+  assert.equal(parseDay("2026-11-18", "2026-11-19"), "2026-11-18");
+  assert.equal(parseDay("2026-12-01", "2026-11-19"), "2026-11-19");
+  assert.equal(parseDay("2026-13-45", "2026-11-19"), "2026-11-19");
+  assert.equal(parseDay(undefined, "2026-11-19"), "2026-11-19");
 });

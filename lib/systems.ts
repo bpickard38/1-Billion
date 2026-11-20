@@ -120,3 +120,57 @@ export function monthNav(month: string, today: string, path: string) {
     nextHref: month < current ? href(shiftMonth(month, 1)) : null,
   };
 }
+
+export type OverviewState = "all" | "some" | "none" | "off" | "future";
+export type OverviewCell = { date: string; state: OverviewState };
+
+/**
+ * The home calendar: every system combined, one month, Monday-first rows.
+ * - all:    every system scheduled that day was done (or a bonus one on a day with none scheduled)
+ * - some:   at least one done, not all
+ * - none:   systems were scheduled, none done (also today, until something is done)
+ * - off:    no system scheduled (or none existed yet)
+ * - future: after today
+ */
+export function buildOverviewMonth(
+  month: string,
+  systems: readonly { doneDates: ReadonlySet<string>; daysOfWeek: readonly number[]; startDate: string }[],
+  today: string
+): (OverviewCell | null)[][] {
+  const first = parseISO(`${month}-01`);
+  const cells: (OverviewCell | null)[] = Array(getISODay(first) - 1).fill(null);
+  for (let day = first; format(day, "yyyy-MM") === month; day = addDays(day, 1)) {
+    const date = format(day, "yyyy-MM-dd");
+    const weekday = getISODay(day);
+    let scheduled = 0;
+    let done = 0;
+    let doneScheduled = 0;
+    for (const s of systems) {
+      const isScheduled = s.daysOfWeek.includes(weekday) && date >= s.startDate;
+      const isDone = s.doneDates.has(date);
+      if (isScheduled) scheduled++;
+      if (isDone) done++;
+      if (isScheduled && isDone) doneScheduled++;
+    }
+    let state: OverviewState;
+    if (date > today) state = "future";
+    else if (scheduled > 0 && doneScheduled === scheduled) state = "all";
+    else if (scheduled === 0 && done > 0) state = "all";
+    else if (done > 0) state = "some";
+    else if (scheduled > 0) state = "none";
+    else state = "off";
+    cells.push({ date, state });
+  }
+  while (cells.length % 7 !== 0) cells.push(null);
+  const rows: (OverviewCell | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7));
+  return rows;
+}
+
+/** A valid "yyyy-MM-dd" no later than today, else today. */
+export function parseDay(value: unknown, today: string): string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(parseISO(value).getTime())) {
+    return today;
+  }
+  return value > today ? today : value;
+}
