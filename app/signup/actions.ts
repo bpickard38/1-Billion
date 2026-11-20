@@ -20,5 +20,5 @@ export async function signup(formData: FormData) {
   // "Confirm email" on: no session yet, user must click the emailed link first.
   if (!data.session) redirect("/login?notice=check-email");
 
-  redirect("/today");
+  redirect("/systems");
 }

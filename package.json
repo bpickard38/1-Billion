@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "node --test lib/dates.test.ts lib/streaks.test.ts lib/schedule.test.ts lib/goals.test.ts lib/score.test.ts lib/notifications.test.ts lib/planner.test.ts lib/canvas-client.test.ts lib/planning-database.test.ts",
+    "test": "node --test lib/dates.test.ts lib/streaks.test.ts",
     "db:types": "supabase gen types typescript --linked > lib/supabase/types.ts"
   },
   "dependencies": {
@@ -16,16 +16,13 @@
     "@supabase/supabase-js": "^2.115.0",
     "date-fns": "^4.4.0",
     "date-fns-tz": "^3.2.0",
-    "googleapis": "^178.1.1",
     "lucide-react": "^1.41.0",
     "next": "16.3.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "web-push": "^3.6.7",
     "zod": "^4.5.4"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.8",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

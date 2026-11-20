@@ -21,15 +21,15 @@ Read `PLAN.md` first. Work on exactly the phase Brayden names. Nothing else.
 
 ## Layout
 ```
-app/(app)/*     authenticated screens (today, week, goals, crm, more)
-app/login       email + password only; sign-ups are disabled in Supabase
-app/api         route handlers (cron, push, google) — later phases
-components/     small, dumb UI pieces
-lib/supabase/   browser client, server client, proxy session refresh
-lib/*.ts        pure logic (score, dates) — unit-tested
-supabase/       migrations + seed.sql
-public/         manifest.json, sw.js, icons/
-proxy.ts        Next.js 16 "proxy" (was middleware): session refresh + auth redirects
+app/(app)/systems/*   authenticated screens: list, detail, new, edit
+app/login, app/signup email + password
+components/systems/   small UI pieces for systems
+lib/systems-ai.ts     AI draft of a system (OpenAI, server only)
+lib/*.ts              pure logic (dates, streaks), unit-tested
+lib/supabase/         browser client, server client, proxy session refresh
+supabase/             migrations + seed.sql
+public/               manifest.json, sw.js, icons/
+proxy.ts              Next.js 16 "proxy" (was middleware): session refresh + auth redirects
 ```
 
 ## Environment

@@ -1,16 +1,16 @@
 @import "tailwindcss";
 
-/* Dark only. One palette, no toggles. */
+/* Light only. White + one blue accent, no toggles. */
 :root {
-  color-scheme: dark;
-  --bg: #0a0a0a;
-  --surface: #161616;
-  --border: #2a2a2a;
-  --fg: #ededed;
-  --muted: #8a8a8a;
-  --accent: #f5c542; /* gold */
-  --good: #3ddc84;
-  --bad: #ff5c5c;
+  color-scheme: light;
+  --bg: #ffffff;
+  --surface: #f4f6f9;
+  --border: #e3e7ee;
+  --fg: #111827;
+  --muted: #6b7280;
+  --accent: #2563eb; /* blue */
+  --good: #16a34a;
+  --bad: #dc2626;
 }
 
 @theme inline {

@@ -15,7 +15,7 @@ export async function login(formData: FormData) {
 
   if (error) redirect("/login?error=invalid");
 
-  redirect("/today");
+  redirect("/systems");
 }
 
 export async function logout() {

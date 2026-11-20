@@ -4,11 +4,11 @@ import SwRegister from "@/components/SwRegister";
 
 export const metadata: Metadata = {
   title: "1 Billion",
-  description: "Founder OS. The app is not the mission.",
+  description: "Track your systems: daily habit stacks.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
     title: "1 Billion",
   },
   icons: {
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a0a0a",
+  themeColor: "#ffffff",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,

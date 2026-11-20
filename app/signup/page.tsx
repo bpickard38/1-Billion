@@ -47,7 +47,7 @@ export default async function SignupPage({ searchParams }: PageProps<"/signup">)
           {message && <p className="text-bad text-sm">{message}</p>}
           <button
             type="submit"
-            className="mt-2 rounded-lg bg-accent text-black font-semibold py-3 text-base active:opacity-80"
+            className="mt-2 rounded-lg bg-accent text-white font-semibold py-3 text-base active:opacity-80"
           >
             Create account
           </button>

@@ -39,527 +39,124 @@ export type Database = {
   }
   public: {
     Tables: {
-      daily_entries: {
-        Row: {
-          accomplished: string | null
-          created_at: string
-          date: string
-          id: string
-          learned: string | null
-          priority_goal_id: string | null
-          priority_text: string | null
-          submitted_at: string | null
-          tomorrow_priority: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          accomplished?: string | null
-          created_at?: string
-          date: string
-          id?: string
-          learned?: string | null
-          priority_goal_id?: string | null
-          priority_text?: string | null
-          submitted_at?: string | null
-          tomorrow_priority?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Update: {
-          accomplished?: string | null
-          created_at?: string
-          date?: string
-          id?: string
-          learned?: string | null
-          priority_goal_id?: string | null
-          priority_text?: string | null
-          submitted_at?: string | null
-          tomorrow_priority?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "daily_entries_priority_goal_id_fkey"
-            columns: ["priority_goal_id"]
-            isOneToOne: false
-            referencedRelation: "goals"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      goals: {
-        Row: {
-          created_at: string
-          current_value: number
-          description: string | null
-          ends_on: string | null
-          id: string
-          level: string
-          parent_id: string | null
-          sort: number
-          starts_on: string | null
-          status: string
-          target_unit: string | null
-          target_value: number | null
-          title: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          current_value?: number
-          description?: string | null
-          ends_on?: string | null
-          id?: string
-          level: string
-          parent_id?: string | null
-          sort?: number
-          starts_on?: string | null
-          status?: string
-          target_unit?: string | null
-          target_value?: number | null
-          title: string
-          updated_at?: string
-          user_id?: string
-        }
-        Update: {
-          created_at?: string
-          current_value?: number
-          description?: string | null
-          ends_on?: string | null
-          id?: string
-          level?: string
-          parent_id?: string | null
-          sort?: number
-          starts_on?: string | null
-          status?: string
-          target_unit?: string | null
-          target_value?: number | null
-          title?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "goals_parent_id_fkey"
-            columns: ["parent_id"]
-            isOneToOne: false
-            referencedRelation: "goals"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      google_tokens: {
-        Row: {
-          access_token: string | null
-          calendar_id: string | null
-          created_at: string
-          expires_at: string | null
-          id: string
-          last_sync_error: string | null
-          last_synced_at: string | null
-          primary_sync_token: string | null
-          refresh_token: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          access_token?: string | null
-          calendar_id?: string | null
-          created_at?: string
-          expires_at?: string | null
-          id?: string
-          last_sync_error?: string | null
-          last_synced_at?: string | null
-          primary_sync_token?: string | null
-          refresh_token: string
-          updated_at?: string
-          user_id?: string
-        }
-        Update: {
-          access_token?: string | null
-          calendar_id?: string | null
-          created_at?: string
-          expires_at?: string | null
-          id?: string
-          last_sync_error?: string | null
-          last_synced_at?: string | null
-          primary_sync_token?: string | null
-          refresh_token?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      habit_logs: {
-        Row: {
-          created_at: string
-          date: string
-          done: boolean
-          habit_id: string
-          id: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          date: string
-          done?: boolean
-          habit_id: string
-          id?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Update: {
-          created_at?: string
-          date?: string
-          done?: boolean
-          habit_id?: string
-          id?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "habit_logs_habit_id_fkey"
-            columns: ["habit_id"]
-            isOneToOne: false
-            referencedRelation: "habits"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      habits: {
-        Row: {
-          active: boolean
-          created_at: string
-          days_of_week: number[]
-          id: string
-          name: string
-          sort: number
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          active?: boolean
-          created_at?: string
-          days_of_week?: number[]
-          id?: string
-          name: string
-          sort?: number
-          updated_at?: string
-          user_id?: string
-        }
-        Update: {
-          active?: boolean
-          created_at?: string
-          days_of_week?: number[]
-          id?: string
-          name?: string
-          sort?: number
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      notification_log: {
-        Row: {
-          id: string
-          kind: string
-          ref_id: string
-          sent_at: string
-          sent_for: string
-          user_id: string
-        }
-        Insert: {
-          id?: string
-          kind: string
-          ref_id?: string
-          sent_at?: string
-          sent_for: string
-          user_id?: string
-        }
-        Update: {
-          id?: string
-          kind?: string
-          ref_id?: string
-          sent_at?: string
-          sent_for?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       profiles: {
         Row: {
           created_at: string
           id: string
-          north_star: string | null
-          notification_prefs: Json
-          score_weights: Json
+          last_ai_at: string | null
           timezone: string
           updated_at: string
-          week_start: string
         }
         Insert: {
           created_at?: string
           id: string
-          north_star?: string | null
-          notification_prefs?: Json
-          score_weights?: Json
+          last_ai_at?: string | null
           timezone?: string
           updated_at?: string
-          week_start?: string
         }
         Update: {
           created_at?: string
           id?: string
-          north_star?: string | null
-          notification_prefs?: Json
-          score_weights?: Json
+          last_ai_at?: string | null
           timezone?: string
           updated_at?: string
-          week_start?: string
         }
         Relationships: []
       }
-      push_subscriptions: {
+      system_logs: {
         Row: {
-          auth: string
           created_at: string
-          endpoint: string
+          date: string
           id: string
-          p256dh: string
-          updated_at: string
-          user_agent: string | null
+          system_id: string
           user_id: string
         }
         Insert: {
-          auth: string
           created_at?: string
-          endpoint: string
+          date: string
           id?: string
-          p256dh: string
-          updated_at?: string
-          user_agent?: string | null
+          system_id: string
           user_id?: string
         }
         Update: {
-          auth?: string
-          created_at?: string
-          endpoint?: string
-          id?: string
-          p256dh?: string
-          updated_at?: string
-          user_agent?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
-      schedule_blocks: {
-        Row: {
-          category: string
-          created_at: string
-          date: string
-          done: boolean
-          end_at: string
-          google_etag: string | null
-          google_event_id: string | null
-          google_recurring_event_id: string | null
-          id: string
-          recurrence_days: number[] | null
-          source: string
-          start_at: string
-          title: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          category: string
-          created_at?: string
-          date: string
-          done?: boolean
-          end_at: string
-          google_etag?: string | null
-          google_event_id?: string | null
-          google_recurring_event_id?: string | null
-          id?: string
-          recurrence_days?: number[] | null
-          source?: string
-          start_at: string
-          title: string
-          updated_at?: string
-          user_id?: string
-        }
-        Update: {
-          category?: string
           created_at?: string
           date?: string
-          done?: boolean
-          end_at?: string
-          google_etag?: string | null
-          google_event_id?: string | null
-          google_recurring_event_id?: string | null
           id?: string
-          recurrence_days?: number[] | null
-          source?: string
-          start_at?: string
-          title?: string
-          updated_at?: string
+          system_id?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "system_logs_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: false
+            referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+        ]
       }
-      schedule_templates: {
+      system_steps: {
         Row: {
-          category: string
           created_at: string
-          end_time: string
           id: string
           sort: number
-          start_time: string
+          system_id: string
           title: string
           updated_at: string
           user_id: string
-          weekday: number
         }
         Insert: {
-          category: string
           created_at?: string
-          end_time: string
           id?: string
           sort?: number
-          start_time: string
+          system_id: string
           title: string
           updated_at?: string
           user_id?: string
-          weekday: number
         }
         Update: {
-          category?: string
           created_at?: string
-          end_time?: string
           id?: string
           sort?: number
-          start_time?: string
+          system_id?: string
           title?: string
-          updated_at?: string
-          user_id?: string
-          weekday?: number
-        }
-        Relationships: []
-      }
-      skill_categories: {
-        Row: {
-          created_at: string
-          id: string
-          is_side_tree: boolean
-          name: string
-          sort: number
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_side_tree?: boolean
-          name: string
-          sort?: number
-          updated_at?: string
-          user_id?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          is_side_tree?: boolean
-          name?: string
-          sort?: number
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      skills: {
-        Row: {
-          category_id: string
-          created_at: string
-          id: string
-          name: string
-          sort: number
-          status: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          category_id: string
-          created_at?: string
-          id?: string
-          name: string
-          sort?: number
-          status?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Update: {
-          category_id?: string
-          created_at?: string
-          id?: string
-          name?: string
-          sort?: number
-          status?: string
           updated_at?: string
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "skills_category_id_fkey"
-            columns: ["category_id"]
+            foreignKeyName: "system_steps_system_id_fkey"
+            columns: ["system_id"]
             isOneToOne: false
-            referencedRelation: "skill_categories"
+            referencedRelation: "systems"
             referencedColumns: ["id"]
           },
         ]
       }
-      weekly_reviews: {
+      systems: {
         Row: {
-          answers: Json
-          auto_closed: boolean
-          biggest_issue: string | null
-          breakdown: Json | null
-          closed_at: string | null
           created_at: string
           id: string
-          score: number | null
+          name: string
+          sort: number
           updated_at: string
           user_id: string
-          week_start: string
         }
         Insert: {
-          answers?: Json
-          auto_closed?: boolean
-          biggest_issue?: string | null
-          breakdown?: Json | null
-          closed_at?: string | null
           created_at?: string
           id?: string
-          score?: number | null
+          name: string
+          sort?: number
           updated_at?: string
           user_id?: string
-          week_start: string
         }
         Update: {
-          answers?: Json
-          auto_closed?: boolean
-          biggest_issue?: string | null
-          breakdown?: Json | null
-          closed_at?: string | null
           created_at?: string
           id?: string
-          score?: number | null
+          name?: string
+          sort?: number
           updated_at?: string
           user_id?: string
-          week_start?: string
         }
         Relationships: []
       }
@@ -568,7 +165,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      claim_ai: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
