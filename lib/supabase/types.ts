@@ -235,12 +235,47 @@ export type Database = {
         }
         Relationships: []
       }
+      workout_logs: {
+        Row: {
+          created_at: string
+          date: string
+          exercise: string
+          id: string
+          results: Json
+          unit: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          exercise: string
+          id?: string
+          results?: Json
+          unit: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          exercise?: string
+          id?: string
+          results?: Json
+          unit?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       workout_plans: {
         Row: {
           created_at: string
           goals: string
           notes: string
           plan: Json | null
+          progress_note: string | null
+          progressed_on: string | null
           schedule: string
           updated_at: string
           user_id: string
@@ -250,6 +285,8 @@ export type Database = {
           goals?: string
           notes?: string
           plan?: Json | null
+          progress_note?: string | null
+          progressed_on?: string | null
           schedule?: string
           updated_at?: string
           user_id?: string
@@ -259,6 +296,8 @@ export type Database = {
           goals?: string
           notes?: string
           plan?: Json | null
+          progress_note?: string | null
+          progressed_on?: string | null
           schedule?: string
           updated_at?: string
           user_id?: string

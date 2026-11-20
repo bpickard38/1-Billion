@@ -3,10 +3,11 @@ import PageTitle from "@/components/PageTitle";
 import PlanForm from "@/components/exercise/PlanForm";
 import ChangeForm from "@/components/exercise/ChangeForm";
 import WorkoutDay from "@/components/exercise/WorkoutDay";
+import TodayWorkout from "@/components/exercise/TodayWorkout";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/supabase/profile";
 import { getLocalDateString, DEFAULT_TIMEZONE } from "@/lib/dates";
-import { workoutPlanSchema } from "@/lib/workout-ai";
+import { workoutPlanSchema } from "@/lib/workout";
 
 // Building a plan can take close to a minute.
 export const maxDuration = 120;
@@ -21,7 +22,7 @@ const DEFAULT_SCHEDULE =
 export default async function ExercisePage() {
   const supabase = await createClient();
   const [{ data: row }, profile] = await Promise.all([
-    supabase.from("workout_plans").select("goals, schedule, notes, plan").maybeSingle(),
+    supabase.from("workout_plans").select("goals, schedule, notes, plan, progress_note, progressed_on").maybeSingle(),
     getProfile(),
   ]);
   const today = getLocalDateString(new Date(), profile?.timezone ?? DEFAULT_TIMEZONE);
@@ -51,6 +52,23 @@ export default async function ExercisePage() {
   }
 
   const todayPlan = plan.days.find((d) => d.day === weekday);
+  const names = todayPlan?.exercises.map((e) => e.name) ?? [];
+  const { data: logs } = names.length
+    ? await supabase
+        .from("workout_logs")
+        .select("date, exercise, results")
+        .in("exercise", names)
+        .lte("date", today)
+        .order("date", { ascending: false })
+        .limit(60)
+    : { data: [] };
+  const asSets = (v: unknown) => (Array.isArray(v) ? v.map((x) => (typeof x === "number" ? x : null)) : []);
+  const logged: Record<string, (number | null)[]> = {};
+  const last: Record<string, { date: string; results: (number | null)[] }> = {};
+  for (const log of logs ?? []) {
+    if (log.date === today) logged[log.exercise] = asSets(log.results);
+    else if (!last[log.exercise]) last[log.exercise] = { date: log.date, results: asSets(log.results) };
+  }
 
   return (
     <>
@@ -63,7 +81,18 @@ export default async function ExercisePage() {
             <h2 className="text-lg font-bold">{todayPlan.title}</h2>
             <span className="shrink-0 text-sm text-muted">{todayPlan.minutes} min</span>
           </div>
-          <WorkoutDay day={todayPlan} />
+          {todayPlan.exercises.length === 0 ? (
+            <p className="text-sm text-muted">Rest day.</p>
+          ) : (
+            <TodayWorkout
+              key={todayPlan.exercises.map((e) => `${e.name}:${e.sets}`).join("|")}
+              exercises={todayPlan.exercises}
+              logged={logged}
+              last={last}
+              progressNote={row?.progress_note ?? null}
+              finishedToday={row?.progressed_on === today}
+            />
+          )}
         </section>
       )}
 
