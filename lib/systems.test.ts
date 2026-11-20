@@ -74,3 +74,15 @@ test("parseDay clamps to today and rejects junk", () => {
   assert.equal(parseDay("2026-13-45", "2026-11-19"), "2026-11-19");
   assert.equal(parseDay(undefined, "2026-11-19"), "2026-11-19");
 });
+
+test("buildOverviewMonth counts a partly-done system as some", () => {
+  const morning = {
+    doneDates: new Set<string>(),
+    partialDates: new Set(["2026-11-19"]),
+    daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
+    startDate: "2026-11-01",
+  };
+  const week = buildOverviewMonth("2026-11", [morning], "2026-11-19")[3];
+  assert.equal(week[2]?.state, "none"); // Wed 18: nothing ticked
+  assert.equal(week[3]?.state, "some"); // Thu 19 (today): a few steps ticked
+});

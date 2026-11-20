@@ -90,14 +90,20 @@ export type OverviewCell = { date: string; state: OverviewState };
 /**
  * The home calendar: every system combined, one month, Monday-first rows.
  * - all:    every system scheduled that day was done (or a bonus one on a day with none scheduled)
- * - some:   at least one done, not all
+ * - some:   at least one system done or partly done (some steps ticked), not all
  * - none:   systems were scheduled, none done (also today, until something is done)
  * - off:    no system scheduled (or none existed yet)
  * - future: after today
  */
 export function buildOverviewMonth(
   month: string,
-  systems: readonly { doneDates: ReadonlySet<string>; daysOfWeek: readonly number[]; startDate: string }[],
+  systems: readonly {
+    doneDates: ReadonlySet<string>;
+    /** dates with at least one step ticked */
+    partialDates?: ReadonlySet<string>;
+    daysOfWeek: readonly number[];
+    startDate: string;
+  }[],
   today: string
 ): (OverviewCell | null)[][] {
   const first = parseISO(`${month}-01`);
@@ -108,7 +114,9 @@ export function buildOverviewMonth(
     let scheduled = 0;
     let done = 0;
     let doneScheduled = 0;
+    let partial = 0;
     for (const s of systems) {
+      if (!s.doneDates.has(date) && s.partialDates?.has(date)) partial++;
       const isScheduled = s.daysOfWeek.includes(weekday) && date >= s.startDate;
       const isDone = s.doneDates.has(date);
       if (isScheduled) scheduled++;
@@ -119,7 +127,7 @@ export function buildOverviewMonth(
     if (date > today) state = "future";
     else if (scheduled > 0 && doneScheduled === scheduled) state = "all";
     else if (scheduled === 0 && done > 0) state = "all";
-    else if (done > 0) state = "some";
+    else if (done > 0 || partial > 0) state = "some";
     else if (scheduled > 0) state = "none";
     else state = "off";
     cells.push({ date, state });

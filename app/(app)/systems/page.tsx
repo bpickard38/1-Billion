@@ -5,7 +5,8 @@ import SystemList from "@/components/systems/SystemList";
 import HomeCalendar from "@/components/systems/HomeCalendar";
 import { loadSystems } from "@/lib/systems-data";
 import { buildOverviewMonth, monthNav, parseDay, parseMonth } from "@/lib/systems";
-import { format, getISODay, parseISO } from "date-fns";
+import { endOfMonth, format, getISODay, parseISO } from "date-fns";
+import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/app/login/actions";
 
 export default async function SystemsPage({ searchParams }: PageProps<"/systems">) {
@@ -16,6 +17,24 @@ export default async function SystemsPage({ searchParams }: PageProps<"/systems"
   const weekday = getISODay(parseISO(day));
   const isToday = day === today;
 
+  // Step ticks for the visible month and the selected day: partly-done
+  // systems show as "some" on the calendar and as a part-filled ring.
+  const monthStart = `${month}-01`;
+  const monthEnd = format(endOfMonth(parseISO(monthStart)), "yyyy-MM-dd");
+  const supabase = await createClient();
+  const { data: stepLogs } = await supabase
+    .from("step_logs")
+    .select("system_id, date")
+    .gte("date", day < monthStart ? day : monthStart)
+    .lte("date", day > monthEnd ? day : monthEnd);
+  const partialDates = new Map<string, Set<string>>();
+  const tickedOnDay = new Map<string, number>();
+  for (const log of stepLogs ?? []) {
+    if (!partialDates.has(log.system_id)) partialDates.set(log.system_id, new Set());
+    partialDates.get(log.system_id)!.add(log.date);
+    if (log.date === day) tickedOnDay.set(log.system_id, (tickedOnDay.get(log.system_id) ?? 0) + 1);
+  }
+
   const items = systems.map((s) => ({
     id: s.id,
     slug: s.slug,
@@ -25,6 +44,7 @@ export default async function SystemsPage({ searchParams }: PageProps<"/systems"
     stepCount: s.stepCount,
     scheduled: s.daysOfWeek.includes(weekday),
     done: s.doneDates.has(day),
+    ticked: tickedOnDay.get(s.id) ?? 0,
     streak: s.streak,
   }));
   const scheduled = items.filter((s) => s.scheduled);
@@ -45,7 +65,11 @@ export default async function SystemsPage({ searchParams }: PageProps<"/systems"
       </div>
       {items.length > 0 && (
         <HomeCalendar
-          weeks={buildOverviewMonth(month, systems, today)}
+          weeks={buildOverviewMonth(
+            month,
+            systems.map((s) => ({ ...s, partialDates: partialDates.get(s.id) })),
+            today
+          )}
           month={month}
           today={today}
           selected={day}

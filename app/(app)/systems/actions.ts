@@ -1,6 +1,6 @@
 "use server";
 
-import { refresh } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/supabase/profile";
@@ -47,6 +47,9 @@ export async function setSystemDone(systemId: string, done: boolean, day?: strin
     if (error || stepError) throw new Error((error ?? stepError)!.message);
   }
 
+  // Clear the client cache too, so going back to the home calendar (e.g.
+  // swiping back on iPhone) shows the change instead of a cached page.
+  revalidatePath("/systems", "layout");
   refresh();
 }
 
@@ -78,6 +81,9 @@ export async function setStepDone(systemId: string, stepId: string, done: boolea
     : await supabase.from("system_logs").delete().eq("system_id", systemId).eq("date", date);
   if (systemError) throw new Error(systemError.message);
 
+  // Clear the client cache too, so going back to the home calendar (e.g.
+  // swiping back on iPhone) shows the change instead of a cached page.
+  revalidatePath("/systems", "layout");
   refresh();
 }
 

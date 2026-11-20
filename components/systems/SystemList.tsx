@@ -16,6 +16,8 @@ type Item = {
   stepCount: number;
   scheduled: boolean;
   done: boolean;
+  /** steps ticked on the selected day */
+  ticked: number;
   streak: number;
 };
 
@@ -27,7 +29,9 @@ export default function SystemList({ systems, day, dayLabel }: { systems: Item[]
   const [items, setOptimistic] = useOptimistic(
     systems,
     (state, update: { id: string; done: boolean }) =>
-      state.map((s) => (s.id === update.id ? { ...s, done: update.done } : s))
+      state.map((s) =>
+        s.id === update.id ? { ...s, done: update.done, ticked: update.done ? s.stepCount : 0 } : s
+      )
   );
   const [, startTransition] = useTransition();
 
@@ -96,7 +100,11 @@ function Row({ item, onToggle }: { item: Item; onToggle: () => void }) {
         aria-label={item.done ? `Uncheck ${item.name}` : `Check off ${item.name}`}
         className="py-4 pl-4 pr-3"
       >
-        <CheckCircle checked={item.done} size="md" />
+        <CheckCircle
+          checked={item.done}
+          size="md"
+          progress={item.stepCount ? item.ticked / item.stepCount : 0}
+        />
       </button>
       <Link href={`/systems/${item.slug}`} className="flex min-w-0 flex-1 items-center gap-2 py-4 pr-3">
         <span className="min-w-0 flex-1">
@@ -104,7 +112,9 @@ function Row({ item, onToggle }: { item: Item; onToggle: () => void }) {
             {item.name}
           </span>
           <span className="block text-xs text-muted">
-            {item.stepCount} {item.stepCount === 1 ? "step" : "steps"}
+            {item.ticked > 0 && !item.done
+              ? `${item.ticked} of ${item.stepCount} steps`
+              : `${item.stepCount} ${item.stepCount === 1 ? "step" : "steps"}`}
             {!item.scheduled && ` · ${formatDays(item.daysOfWeek)}`}
             {item.streak > 0 && <span className="text-accent"> · {item.streak} day streak</span>}
           </span>
